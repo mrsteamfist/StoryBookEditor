@@ -21,14 +21,14 @@ namespace StoryBookEditor
         /// </summary>
         /// <param name="path">Path to where file lives</param>
         /// <returns>Instance of the book object or null if there is an issue</returns>
-        public StoryBook ReadBook(string path)
+        public StoryBookModel ReadBook(string path)
         {
             lock (fileLock)
             {
                 StreamReader reader = new StreamReader(path);
                 var json = reader.ReadToEnd();
                 reader.Close();
-                return JsonUtility.FromJson<StoryBook>(json);
+                return JsonUtility.FromJson<StoryBookModel>(json);
             }
         }
         /// <summary>
@@ -37,7 +37,7 @@ namespace StoryBookEditor
         /// <param name="book">Book to save</param>
         /// <param name="path">Path to where file lives</param>
         /// <returns>If can save</returns>
-        public bool SaveBook(StoryBook storyBook, string path)
+        public bool SaveBook(StoryBookModel storyBook, string path)
         {
             if (storyBook != null)
             {

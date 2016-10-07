@@ -17,7 +17,7 @@ namespace StoryBookEditor
     public class Startup
     {
         protected static object updateLock = new object();
-        protected static BookObject _bookInstance = null;
+        protected static StoryBook _bookInstance = null;
         /// <summary>
         /// Called on the start of unity
         /// Set supported resolution and register with first update event
@@ -47,12 +47,12 @@ namespace StoryBookEditor
                     if (storyBookRoot == default(GameObject))
                     {
                         storyBookRoot = new GameObject();
-                        _bookInstance = storyBookRoot.AddComponent<BookObject>();
+                        _bookInstance = storyBookRoot.AddComponent<StoryBook>();
                         storyBookRoot.name = "StoryBook";
                     }
                     else
                     {
-                        _bookInstance = storyBookRoot.GetComponent<BookObject>();
+                        _bookInstance = storyBookRoot.GetComponent<StoryBook>();
                     }
                 }
                 else

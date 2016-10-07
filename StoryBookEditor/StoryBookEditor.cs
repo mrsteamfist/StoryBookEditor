@@ -12,7 +12,7 @@ namespace StoryBookEditor
     /// <summary>
     /// Editor Object for a story book UI
     /// </summary>
-    [CustomEditor(typeof(BookObject))]
+    [CustomEditor(typeof(StoryBook))]
     [CanEditMultipleObjects]
     public class StoryBookEditor : Editor
     {
@@ -37,19 +37,19 @@ namespace StoryBookEditor
         /// </summary>
         void OnEnable()
         {
-            PagesBG = serializedObject.FindProperty(BookObject.PAGE_IMAGE_PROPERTY);
-            PageName = serializedObject.FindProperty(BookObject.PAGE_NAME_PROPERTY);
-            Branches = serializedObject.FindProperty(BookObject.BRANCHES_PROPERTY);
-            PagesCanBack = serializedObject.FindProperty(BookObject.PAGE_CAN_BACK_PROPERTY);
+            PagesBG = serializedObject.FindProperty(StoryBook.PAGE_IMAGE_PROPERTY);
+            PageName = serializedObject.FindProperty(StoryBook.PAGE_NAME_PROPERTY);
+            Branches = serializedObject.FindProperty(StoryBook.BRANCHES_PROPERTY);
+            PagesCanBack = serializedObject.FindProperty(StoryBook.PAGE_CAN_BACK_PROPERTY);
         }
         /// <summary>
         /// Casting property for serialized object as Book object
         /// </summary>
-        public BookObject TargetBook
+        public StoryBook TargetBook
         {
             get
             {
-                return serializedObject.targetObject as BookObject;
+                return serializedObject.targetObject as StoryBook;
             }
         }
         /// <summary>

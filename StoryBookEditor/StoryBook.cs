@@ -16,7 +16,7 @@ namespace StoryBookEditor
     /// Script to attach to the UI object to allow/launch UI
     /// </summary>
     [ExecuteInEditMode]
-    public class BookObject : MonoBehaviour
+    public class StoryBook : MonoBehaviour
     {
         #region Variables
         #region HelperValues
@@ -38,11 +38,11 @@ namespace StoryBookEditor
         protected string _initPage = string.Empty;
         #endregion
         #region Current Data
-        public List<StoryBranch> Branches = new List<StoryBranch>();
+        public List<StoryBranchModel> Branches = new List<StoryBranchModel>();
         private IFileService _fileService;
         #endregion
         #region Display requirements
-        protected StoryBook _storyBook;
+        protected StoryBookModel _storyBook;
         private SpriteRenderer _spriteRenderer = null;
         private Vector3 _cameraSizeRatio;
         #endregion
@@ -95,14 +95,14 @@ namespace StoryBookEditor
                 if (_storyBook == null)
                 {
                     Debug.LogWarning("First time book load null, re-initing it");
-                    _storyBook = new StoryBook();
+                    _storyBook = new StoryBookModel();
                     _fileService.SaveBook(_storyBook, FileService.PATH);
                 }
                 #endregion
                 #region Make new book if there isn't any
                 if (_storyBook.Pages == null || !_storyBook.Pages.Any())
                 {
-                    var p = new StoryPage();
+                    var p = new StoryPageModel();
                     p.Name = "Default";
                     p.Background = "background";
                     _currentId = p.Id;
@@ -175,7 +175,7 @@ namespace StoryBookEditor
             {
                 nextPageName = "Next Page " + _storyBook.Pages.Count.ToString();
             }
-            var branch = new StoryBranch()
+            var branch = new StoryBranchModel()
             {
                 ImageSprite = sprite,
                 ItemLocation = loc,
@@ -191,7 +191,7 @@ namespace StoryBookEditor
             {
                 branch.Image = string.Empty;
             }
-            var page = new StoryPage()
+            var page = new StoryPageModel()
             {
                 Name = nextPageName
             };

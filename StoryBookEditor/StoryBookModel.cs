@@ -8,20 +8,20 @@ using System.Collections.Generic;
 
 namespace StoryBookEditor
 {
-    public class StoryBook
+    public class StoryBookModel
     {
-        public List<StoryPage> Pages;
-        public List<StoryBranch> Branches;
+        public List<StoryPageModel> Pages;
+        public List<StoryBranchModel> Branches;
 
-        public StoryBook()
+        public StoryBookModel()
         {
-            Pages = new List<StoryPage>();
-            Branches = new List<StoryBranch>();
+            Pages = new List<StoryPageModel>();
+            Branches = new List<StoryBranchModel>();
         }
 
         public override bool Equals(object obj)
         {
-            var other = obj as StoryBook;
+            var other = obj as StoryBookModel;
 
             if (obj == null || other == null)
             {

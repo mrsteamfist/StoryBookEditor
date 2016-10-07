@@ -5,63 +5,59 @@
 *********************************/
 
 using System;
-using UnityEngine;
+using System.Collections.Generic;
 
 namespace StoryBookEditor
 {
     /// <summary>
-    /// Story branch object
+    /// 
     /// </summary>
     [Serializable]
-    public class StoryBranch
+    public class StoryPageModel
     {
+        public List<string> Branches;
+        public string Name;
+        public string Background;
         public string Id;
-        public Vector2 ItemLocation;
-        public Vector2 ItemSize;
-        public string Image;
-        public string NextPageId = string.Empty;
-        public Sprite ImageSprite;
-        public string NextPageName;
-
-        public GameObject GameObj { get; set; }
         /// <summary>
-        /// Ctor, inits ID
+        /// 
         /// </summary>
-        public StoryBranch()
+        public StoryPageModel()
         {
             Id = Guid.NewGuid().ToString();
+            Branches = new List<string>();
         }
-        
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
         public override int GetHashCode()
         {
             return base.GetHashCode();
         }
         /// <summary>
-        /// Overload method to compare this object is equal to another
+        /// 
         /// </summary>
         /// <param name="obj"></param>
         /// <returns></returns>
         public override bool Equals(object obj)
         {
-            if (obj == null)
+            if(obj == null)
                 return false;
-            var otherBranch = obj as StoryBranch;
-            if (otherBranch != null)
-                return otherBranch.Id == Id;
-            else if(obj is string)
-            {
-                string otherid = (string)obj;
-                return Id == otherid;
-            }
-            return false;
+
+            var other = obj as StoryPageModel;
+            if (other == null)
+                return false;
+
+            return Id == other.Id && Name == other.Name && Background == other.Background && Branches.Count == other.Branches.Count;
         }
         /// <summary>
-        /// Overload operator to compare if 2 branches are equal
+        /// 
         /// </summary>
         /// <param name="lhs"></param>
         /// <param name="rhs"></param>
         /// <returns></returns>
-        public static bool operator ==(StoryBranch lhs, StoryBranch rhs)
+        public static bool operator == (StoryPageModel lhs, StoryPageModel rhs)
         {
             if ((object)lhs == null && (object)rhs == null)
                 return true;
@@ -71,12 +67,12 @@ namespace StoryBookEditor
                 return lhs.Equals(rhs);
         }
         /// <summary>
-        /// Overload operator to compare if 2 branches are not equal
+        /// 
         /// </summary>
         /// <param name="lhs"></param>
         /// <param name="rhs"></param>
         /// <returns></returns>
-        public static bool operator !=(StoryBranch lhs, StoryBranch rhs)
+        public static bool operator !=(StoryPageModel lhs, StoryPageModel rhs)
         {
             if ((object)lhs == null && (object)rhs == null)
                 return false;
