@@ -56,9 +56,6 @@ namespace StoryBookEditor
         /// </summary>
         void Start()
         {
-            if (_spriteRenderer == null && (_spriteRenderer = GetComponent<SpriteRenderer>()) == null)
-                _spriteRenderer = gameObject.AddComponent<SpriteRenderer>();
-
             if (Camera.main != null)
             {
                 float worldScreenHeight = Camera.main.orthographicSize * 2f;
@@ -70,15 +67,10 @@ namespace StoryBookEditor
             var children = new List<GameObject>();
             foreach (Transform child in transform) children.Add(child.gameObject);
             children.ForEach(child => DestroyImmediate(child));
-        }
-        /// <summary>
-        /// Called on loaded from scene
-        /// Handles loading
-        /// </summary>
-        void Awake()
-        {
+
             OnEnable();
         }
+
         /// <summary>
         /// Called on loaded from scene
         /// Handles loading
@@ -110,15 +102,20 @@ namespace StoryBookEditor
 
                     PageName = "Default";
                     PageImage = Resources.Load<Sprite>("background");
+                    if (PageImage == null)
+                        Debug.LogWarning("Unable to load default background sprite");
                     PageCanBack = false;
                     Branches.Clear();
+                    _fileService.SaveBook(_storyBook, FileService.PATH);
+                    LoadPage(_currentId);
                 }
                 #endregion
                 else
                 {
                     LoadPage(_storyBook.Pages.First().Id);
                 }
-                DrawBook();
+                if(_cameraSizeRatio!=null && _cameraSizeRatio != Vector3.zero)
+                    DrawBook();
             }
         }
         /// <summary>
@@ -127,6 +124,9 @@ namespace StoryBookEditor
         /// </summary>
         void Update()
         {
+            if(transform != null && (transform.localScale.x == 0 || transform.localScale.y == 0))
+                DrawBook();
+
             if (Branches != null && Branches.Any() && Input.GetMouseButtonDown(0))
             {
                 var clickX = (float)Math.Floor(Input.mousePosition.x / (Screen.width * WIDTH_PERCENTAGE));
@@ -157,7 +157,7 @@ namespace StoryBookEditor
             if (branch != null)
                 _storyBook.Pages.RemoveAll(x => branch.NextPageId == x.Id);
             Branches.RemoveAll((b) => b.Id == id);
-            
+
             _storyBook.Branches.RemoveAll((b) => b.Id == id);
             if (_fileService != null)
                 _fileService.SaveBook(_storyBook, FileService.PATH);
@@ -218,7 +218,6 @@ namespace StoryBookEditor
         {
             if (_fileService == null)
                 return;
-            bool uiChange = false;
             //change occured, I need to update the book with the current page, branches
             #region Look for changes
             var matchingPage = (from p in _storyBook.Pages
@@ -236,12 +235,10 @@ namespace StoryBookEditor
                 if (PageImage == null && !string.IsNullOrEmpty(matchingPage.Background))
                 {
                     matchingPage.Background = string.Empty;
-                    uiChange = true;
                 }
                 else if (PageImage != null && PageImage.name != matchingPage.Background)
                 {
                     matchingPage.Background = PageImage.name;
-                    uiChange = true;
                 }
                 #endregion
                 #region Branches
@@ -252,19 +249,23 @@ namespace StoryBookEditor
                     var index = _storyBook.Branches.ToList().IndexOf(x);
                     if (index >= 0)
                     {
-                        if (_storyBook.Branches[index].Image != x.ImageSprite.name)
+                        if (x.ImageSprite == null)
+                        {
+                            _storyBook.Branches[index].Image = string.Empty;
+                        }
+                        else if (_storyBook.Branches[index].Image != x.ImageSprite.name)
                         {
                             _storyBook.Branches[index].Image = x.ImageSprite.name;
                         }
-                        if (_storyBook.Branches[index].ItemLocation != x.ItemLocation)
+                        if (_storyBook.Branches[index].ItemLocation.x != x.ItemLocation.x ||
+                                _storyBook.Branches[index].ItemLocation.y != x.ItemLocation.y)
                         {
                             _storyBook.Branches[index].ItemLocation = x.ItemLocation;
-                            uiChange = true;
                         }
-                        if (_storyBook.Branches[index].ItemSize != x.ItemSize)
+                        if (_storyBook.Branches[index].ItemSize.x != x.ItemSize.x ||
+                                _storyBook.Branches[index].ItemSize.y != x.ItemSize.y)
                         {
                             _storyBook.Branches[index].Image = x.Image;
-                            uiChange = true;
                         }
                     }
                     else
@@ -280,8 +281,7 @@ namespace StoryBookEditor
             }
             #endregion
             _fileService.SaveBook(_storyBook, FileService.PATH);
-            if (uiChange)
-                DrawBook();
+            DrawBook();
         }
         /// <summary>
         /// Public method to allow the loading of the page
@@ -304,7 +304,7 @@ namespace StoryBookEditor
             }
 
             _currentId = id;
-            
+
             if (string.IsNullOrEmpty(_initPage))
                 _initPage = _currentId;
             //load the branches
@@ -347,28 +347,54 @@ namespace StoryBookEditor
         /// </summary>
         protected void DrawBook()
         {
-            if (_storyBook == null || _spriteRenderer == null)
+            if (_storyBook == null)
+            {
+                Debug.LogError("Reached drawing step and was not able to retrieve story book");
+            }
+
+            if (_spriteRenderer == null && (_spriteRenderer = GetComponent<SpriteRenderer>()) == null)
+                _spriteRenderer = gameObject.AddComponent<SpriteRenderer>();
+
+            if (_spriteRenderer == null)
+            {
+                Debug.LogError("Unable to load Story Book sprite renderer, please restart unity");
                 return;
+            }
 
             _spriteRenderer.sprite = PageImage;
             if (_spriteRenderer.sprite != null)
             {
-                transform.localScale = new Vector3(_cameraSizeRatio.x / _spriteRenderer.sprite.bounds.size.x, _cameraSizeRatio.y / _spriteRenderer.sprite.bounds.size.y, 1);
+                if (_cameraSizeRatio == null)
+                {
+                    transform.localScale = new Vector3(1f, 1f);
+                    Debug.LogWarning("Setting camera to init size");
+                }
+                else
+                {
+                    transform.localScale = new Vector3(_cameraSizeRatio.x / _spriteRenderer.sprite.bounds.size.x, _cameraSizeRatio.y / _spriteRenderer.sprite.bounds.size.y, 1);
+                    if (transform.localScale == Vector3.zero)
+                        Debug.LogError("Initialization error, please restart unity");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("Drawing scale will be off, not main image found");
             }
             #region Display Branch Info
             //clean out the old branches
             var children = new List<GameObject>();
             foreach (Transform child in transform) children.Add(child.gameObject);
-            children.ForEach(child => DestroyImmediate(child));
+            children.Where(x => x != null).ToList().ForEach(child => DestroyImmediate(child));
+
             if (Branches != null && Branches.Count > 0)
             {
                 #region Sizing information for drawing the branch items
-                var halfSizeWidth = _spriteRenderer.sprite.bounds.size.x / 2f;
-                var halfSizeHeight = _spriteRenderer.sprite.bounds.size.y / 2f;
-                var sectionWidth = _spriteRenderer.sprite.bounds.size.x / 16f;
-                var sectionHeight = _spriteRenderer.sprite.bounds.size.y / 12f;
-                var borderOffsetWidth = _spriteRenderer.sprite.bounds.size.x / 32;
-                var borderOffsetHeight = _spriteRenderer.sprite.bounds.size.y / 24;
+                var halfSizeWidth = _spriteRenderer.sprite == null ? 400f : _spriteRenderer.sprite.bounds.size.x / 2f;
+                var halfSizeHeight = _spriteRenderer.sprite == null ? 300f : _spriteRenderer.sprite.bounds.size.y / 2f;
+                var sectionWidth = _spriteRenderer.sprite == null ? 50f : _spriteRenderer.sprite.bounds.size.x / 16f;
+                var sectionHeight = _spriteRenderer.sprite == null ? 50f : _spriteRenderer.sprite.bounds.size.y / 12f;
+                var borderOffsetWidth = _spriteRenderer.sprite == null ? 25f : _spriteRenderer.sprite.bounds.size.x / 32f;
+                var borderOffsetHeight = _spriteRenderer.sprite == null ? 25f : _spriteRenderer.sprite.bounds.size.y / 24f;
                 #endregion
                 for (int i = 0; i < Branches.Count; i++)
                 {
@@ -381,17 +407,31 @@ namespace StoryBookEditor
                         branch.GameObj.transform.SetParent(transform);
                         var sR = branch.GameObj.AddComponent<SpriteRenderer>();
                         sR.sprite = branch.ImageSprite;
-                        //set branch location
-                        branch.GameObj.transform.localPosition = new Vector3(
-                            (sectionWidth * branch.ItemLocation.x - halfSizeWidth) + (borderOffsetWidth * branch.ItemSize.x),
-                            (sectionHeight * branch.ItemLocation.y - halfSizeHeight) + (borderOffsetHeight * branch.ItemSize.y), 0f);
-                        //get the relative size compared with the background
-                        var relativeScaleWidth = PageImage.bounds.size.x / branch.ImageSprite.bounds.size.x;
-                        var relativeScaleHeight = PageImage.bounds.size.y / branch.ImageSprite.bounds.size.y;
-                        branch.GameObj.transform.localScale = new Vector3(.0625f * relativeScaleWidth * branch.ItemSize.x, .0833f * relativeScaleHeight * branch.ItemSize.y, 1);
+                        if (branch.ImageSprite != null)
+                        {
+                            //set branch location
+                            branch.GameObj.transform.localPosition = new Vector3(
+                                (sectionWidth * branch.ItemLocation.x - halfSizeWidth) + (borderOffsetWidth * branch.ItemSize.x),
+                                (sectionHeight * branch.ItemLocation.y - halfSizeHeight) + (borderOffsetHeight * branch.ItemSize.y), 0f);
+                            //get the relative size compared with the background
+                            float relativeScaleWidth = 0f;
+                            float relativeScaleHeight = 0f;
+                            if (PageImage == null)
+                            {
+                                relativeScaleWidth = _cameraSizeRatio.x / branch.ImageSprite.bounds.size.x;
+                                relativeScaleHeight = _cameraSizeRatio.y / branch.ImageSprite.bounds.size.y;
+                            }
+                            else
+                            {
+                                relativeScaleWidth = PageImage.bounds.size.x / branch.ImageSprite.bounds.size.x;
+                                relativeScaleHeight = PageImage.bounds.size.y / branch.ImageSprite.bounds.size.y;
+                            }
+                            branch.GameObj.transform.localScale = new Vector3(.0625f * relativeScaleWidth * branch.ItemSize.x, .0833f * relativeScaleHeight * branch.ItemSize.y, 1);
+                        }
                     }
                 }
             }
+
             #endregion
         }
     }

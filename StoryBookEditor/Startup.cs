@@ -47,6 +47,7 @@ namespace StoryBookEditor
                     if (storyBookRoot == default(GameObject))
                     {
                         storyBookRoot = new GameObject();
+                        storyBookRoot.transform.localScale = new Vector3(1f, 1f);
                         _bookInstance = storyBookRoot.AddComponent<StoryBook>();
                         storyBookRoot.name = "StoryBook";
                     }
