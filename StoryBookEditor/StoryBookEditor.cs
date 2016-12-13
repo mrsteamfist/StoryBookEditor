@@ -17,6 +17,7 @@ namespace StoryBookEditor
     public class StoryBookEditor : Editor
     {
         public static GUIContent LocationLabel = new GUIContent("Location");
+        public static GUIContent SFXLabel = new GUIContent("Sound Effect");
         public static GUIContent SizeLabel = new GUIContent("Size");
         public static GUIContent SpriteLabel = new GUIContent("Image");
         public static GUIContent NextPageLabel = new GUIContent("Next Page");
@@ -26,8 +27,10 @@ namespace StoryBookEditor
         protected SerializedProperty PagesBG;
         protected SerializedProperty PagesCanBack;
         protected SerializedProperty Branches;
+        protected SerializedProperty BackgroundClip;
 
         protected Sprite _nextImg;
+        protected AudioClip _nextSfx;
         protected Vector2 _location = Vector2.zero;
         protected Vector2 _size = new Vector2(1, 1);
         protected string _nextName = string.Empty;
@@ -41,6 +44,7 @@ namespace StoryBookEditor
             PageName = serializedObject.FindProperty(StoryBook.PAGE_NAME_PROPERTY);
             Branches = serializedObject.FindProperty(StoryBook.BRANCHES_PROPERTY);
             PagesCanBack = serializedObject.FindProperty(StoryBook.PAGE_CAN_BACK_PROPERTY);
+            BackgroundClip = serializedObject.FindProperty(StoryBook.BACKGROUND_CLIP_PROPERTY);
         }
         /// <summary>
         /// Casting property for serialized object as Book object
@@ -62,6 +66,7 @@ namespace StoryBookEditor
             #region Back Button
             EditorGUILayout.PropertyField(PageName);
             EditorGUILayout.PropertyField(PagesBG);
+            EditorGUILayout.PropertyField(BackgroundClip);
             if (PagesCanBack.boolValue)
             {
                 if (GUILayout.Button("Back"))
@@ -77,7 +82,7 @@ namespace StoryBookEditor
                 EditorGUILayout.Separator();
                 EditorGUILayout.PropertyField(Branches);
                 EditorGUI.indentLevel += 1;
-
+                
                 for (int i = 0; i < Branches.arraySize; i++)
                 {
                     var property = Branches.GetArrayElementAtIndex(i);
@@ -86,11 +91,12 @@ namespace StoryBookEditor
                     EditorGUILayout.PropertyField(property.FindPropertyRelative("ItemLocation"), LocationLabel);
                     EditorGUILayout.PropertyField(property.FindPropertyRelative("ItemSize"), SizeLabel);
                     EditorGUILayout.PropertyField(property.FindPropertyRelative("ImageSprite"), SpriteLabel);
-                    EditorGUILayout.PropertyField(nameProp, NextPageLabel);
+                    EditorGUILayout.PropertyField(property.FindPropertyRelative("NextPageName"), NextPageLabel);
+                    EditorGUILayout.PropertyField(property.FindPropertyRelative("SFXClip"), SFXLabel);
                     EditorGUILayout.BeginHorizontal();
                     if (GUILayout.Button("Go To", EditorStyles.miniButtonLeft, ButtonWidth))
                     {
-                        TargetBook.LoadPage(TargetBook.Branches[i].NextPageId);
+                        TargetBook.LoadPage(TargetBook.Branches[i].NextPageId, null);
                     }
                     if (GUILayout.Button("Delete", EditorStyles.miniButtonRight, ButtonWidth))
                     {
@@ -108,14 +114,16 @@ namespace StoryBookEditor
             _nextName = EditorGUILayout.TextField("New Page Name", _nextName);
             _location = EditorGUILayout.Vector2Field("Item Location", _location);
             _size = EditorGUILayout.Vector2Field("Item Size", _size);
+            _nextSfx = EditorGUILayout.ObjectField(new GUIContent("SFX"), _nextSfx, typeof(AudioClip), true) as AudioClip;
             _nextImg = EditorGUILayout.ObjectField(new GUIContent("Item Image"), _nextImg, typeof(Sprite), true) as Sprite;
 
             if (GUILayout.Button("Create"))
             {
-                TargetBook.AddBranchToPage(_location, _size, _nextImg, _nextName);
+                TargetBook.AddBranchToPage(_location, _size, _nextImg, _nextSfx, _nextName);
                 _location = Vector2.zero;
                 _size = new Vector2(1, 1);
                 _nextImg = null;
+                _nextSfx = null;
                 _nextName = string.Empty;
             }
             EditorGUILayout.Separator();

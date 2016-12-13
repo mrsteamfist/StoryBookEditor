@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 using System.IO;
+using UnityEngine.Audio;
 
 namespace StoryBookEditor
 {
@@ -22,12 +23,15 @@ namespace StoryBookEditor
         #region HelperValues
         protected const float WIDTH_PERCENTAGE = .0625f;
         protected const float HEIGHT_PERCENTAGE = .0833f;
+        public const string TRANSITION_FADE = "FADING";
+        public const string PARALAX_FADE = "PARALAXING";
         #endregion
         #region Property Names
         public const string PAGE_NAME_PROPERTY = "PageName";
         public const string PAGE_IMAGE_PROPERTY = "PageImage";
         public const string PAGE_CAN_BACK_PROPERTY = "PageCanBack";
         public const string BRANCHES_PROPERTY = "Branches";
+        public const string BACKGROUND_CLIP_PROPERTY = "BackgroundMusicClip";
         #endregion
         #region Current Page
         protected string _currentId = string.Empty;
@@ -36,15 +40,28 @@ namespace StoryBookEditor
         public bool PageCanBack = false;
         public Stack<string> BackStack = new Stack<string>();
         protected string _initPage = string.Empty;
+        public AudioClip BackgroundMusicClip;
         #endregion
         #region Current Data
+        public event EventHandler<PageChangedEventArgs> PageChanged;
         public List<StoryBranchModel> Branches = new List<StoryBranchModel>();
         private IFileService _fileService;
+        public AudioSource BackgroundMusic;
+        public AudioSource SFX;
+        public bool _isTransitioning = false;
+        public string _transitionType = string.Empty;
+        private const int drawDepth = -1000;
+        public const float fadeSpeed = 0.5f;
+        private float fadeAlpha = 0.0f;
+        private int fadeDir = -1;
         #endregion
         #region Display requirements
         protected StoryBookModel _storyBook;
         private SpriteRenderer _spriteRenderer = null;
         private Vector3 _cameraSizeRatio;
+        public Texture2D fadeOutTexture = null;
+        public GameObject previousScreen = null;
+        public GameObject nextScreen = null;
         #endregion
         #endregion
 
@@ -70,7 +87,7 @@ namespace StoryBookEditor
 
             OnEnable();
         }
-
+        
         /// <summary>
         /// Called on loaded from scene
         /// Handles loading
@@ -79,6 +96,12 @@ namespace StoryBookEditor
         {
             if (_fileService == null)
                 _fileService = new FileService();
+            if (fadeOutTexture == null)
+            {
+                fadeOutTexture = Resources.Load<Texture2D>("FadeImg");
+                fadeOutTexture.wrapMode = TextureWrapMode.Clamp;
+                fadeOutTexture.filterMode = FilterMode.Point;
+            }
             if (_storyBook == null)
             {
                 if (File.Exists(FileService.PATH))
@@ -107,15 +130,85 @@ namespace StoryBookEditor
                     PageCanBack = false;
                     Branches.Clear();
                     _fileService.SaveBook(_storyBook, FileService.PATH);
-                    LoadPage(_currentId);
+                    LoadPage(_currentId, null);
                 }
                 #endregion
                 else
                 {
-                    LoadPage(_storyBook.Pages.First().Id);
+                    LoadPage(_storyBook.Pages.First().Id, null);
                 }
-                if(_cameraSizeRatio!=null && _cameraSizeRatio != Vector3.zero)
+                if (_cameraSizeRatio != null && _cameraSizeRatio != Vector3.zero)
+                {
+                    if (!string.IsNullOrEmpty(_storyBook.BackgroundMusic))
+                    {
+                        BackgroundMusicClip = Resources.Load<AudioClip>(_storyBook.BackgroundMusic);
+                        BackgroundMusic.clip = BackgroundMusicClip;
+                    }
                     DrawBook();
+                }
+            }
+        }
+        public float BeginFade(int direction = -1)
+        {
+            _isTransitioning = true;
+            fadeDir = direction;
+            if (direction == -1)
+                fadeAlpha = 1f;
+            else
+                fadeAlpha = 0f;
+
+            return fadeSpeed;
+        }
+        void OnGUI()
+        {
+            if (_isTransitioning)
+            {
+                if (previousScreen != null && nextScreen != null)
+                {
+                    if (!previousScreen.GetComponent<SpriteRenderer>().enabled)
+                    {
+                        previousScreen.transform.localPosition = Vector3.zero;
+                        previousScreen.GetComponent<SpriteRenderer>().enabled=true;
+                    }
+                    if (!nextScreen.GetComponent<SpriteRenderer>().enabled)
+                    {
+                        nextScreen.transform.localPosition = new Vector3(11f,0,0);
+                        nextScreen.GetComponent<SpriteRenderer>().enabled = true;
+                    }
+                    if(nextScreen.transform.localPosition.x < 1f)
+                    {
+                        _isTransitioning = false;
+                        DestroyImmediate(nextScreen);
+                        DestroyImmediate(previousScreen);
+                        nextScreen = null;
+                        previousScreen = null;
+                    }
+                    else
+                    {
+                        var tmp = nextScreen.transform.localPosition;
+                        tmp.x -= Time.deltaTime * 5f;
+                        nextScreen.transform.localPosition = tmp;
+                        tmp = previousScreen.transform.localPosition;
+                        tmp.x -= Time.deltaTime * 5f;
+                        previousScreen.transform.localPosition = tmp;
+                    }
+                }
+                else
+                {
+                    if (Time.deltaTime < .0001f)
+                    {
+                        System.Threading.Thread.SpinWait(60);
+                        return;
+                    }
+                    fadeAlpha += fadeDir * fadeSpeed * Time.deltaTime;
+                    fadeAlpha = Mathf.Clamp01(fadeAlpha);
+
+                    GUI.color = new Color(GUI.color.r, GUI.color.g, GUI.color.b, fadeAlpha);
+                    GUI.depth = drawDepth;
+                    GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), fadeOutTexture);
+
+                    _isTransitioning = fadeAlpha != 0f && fadeAlpha != 1f;
+                }
             }
         }
         /// <summary>
@@ -124,24 +217,47 @@ namespace StoryBookEditor
         /// </summary>
         void Update()
         {
-            if(transform != null && (transform.localScale.x == 0 || transform.localScale.y == 0))
+            if (transform != null && (transform.localScale.x == 0 || transform.localScale.y == 0))
                 DrawBook();
-
-            if (Branches != null && Branches.Any() && Input.GetMouseButtonDown(0))
+            if(_isTransitioning)
+            {
+                
+            }
+            else if (Branches != null && Branches.Any() && Input.GetMouseButtonDown(0))
             {
                 var clickX = (float)Math.Floor(Input.mousePosition.x / (Screen.width * WIDTH_PERCENTAGE));
                 var clickY = (float)Math.Floor(Input.mousePosition.y / (Screen.height * HEIGHT_PERCENTAGE));
 
-                var hitItem = Branches.Where(x => x.ItemLocation.x <= clickX && clickX <= x.ItemLocation.x + x.ItemSize.x &&
-                        x.ItemLocation.y <= clickY && clickY <= x.ItemLocation.y + x.ItemSize.y);
+                var hitItem = Branches.Where(x => x.ItemLocation != null && x.ItemLocation.x <= clickX && clickX < x.ItemLocation.x + x.ItemSize.x &&
+                        x.ItemLocation.y <= clickY && clickY < x.ItemLocation.y + x.ItemSize.y);
                 if (hitItem.Any())
                 {
-                    LoadPage(hitItem.First().NextPageId);
+                    if (!string.IsNullOrEmpty(hitItem.First().SFX) && SFX != null)
+                    {
+                        if (hitItem.First().SFXClip == null)
+                            hitItem.First().SFXClip = Resources.Load<AudioClip>(hitItem.First().SFX);
+                        if (hitItem.First().SFXClip != null)
+                        {
+                            SFX.PlayOneShot(hitItem.First().SFXClip, 1.0f);
+                        }
+                        else if (!string.IsNullOrEmpty(hitItem.First().SFX) && hitItem.First().SFXClip)
+                        {
+                            Debug.LogWarning("Unabled to load Sound effect for " + hitItem.First().SFX);
+                        }
+                    }
+                    else if(SFX == null)
+                    {
+                        Debug.LogError("SFX broken");
+                    }
+
+                    LoadPage(hitItem.First().NextPageId, hitItem.First());
+                    BeginFade(-1);
                 }
             }
             else if (Input.GetMouseButtonDown(0))
             {
-                LoadPage(_initPage);
+                LoadPage(_initPage, null);
+                BeginFade(-1);
             }
         }
         #endregion
@@ -152,15 +268,15 @@ namespace StoryBookEditor
         /// <param name="id">The ID of the branch to remove</param>
         public void DeleteBranch(string id)
         {
-            Branches.Where(x => x.Id == id && x.GameObj != null).ToList().ForEach(x => DestroyImmediate(x.GameObj));
-            var branch = Branches.Where(x => x.Id == id).FirstOrDefault();
-            if (branch != null)
-                _storyBook.Pages.RemoveAll(x => branch.NextPageId == x.Id);
-            Branches.RemoveAll((b) => b.Id == id);
-
-            _storyBook.Branches.RemoveAll((b) => b.Id == id);
-            if (_fileService != null)
-                _fileService.SaveBook(_storyBook, FileService.PATH);
+            if (_storyBook.Branches.RemoveAll((b) => b.Id == id) > 0)
+            {
+                if (_fileService != null)
+                    _fileService.SaveBook(_storyBook, FileService.PATH);
+            }
+            if(Branches.RemoveAll((b) => b.Id == id) > 0)
+            {
+                BookUpdated();
+            }
         }
         /// <summary>
         /// Adds a new branch to the current page and adds a page to that branch
@@ -169,47 +285,23 @@ namespace StoryBookEditor
         /// <param name="size">Size of the next item</param>
         /// <param name="sprite">Sprite to show the next item</param>
         /// <param name="nextPageName">Title of that page the branch will navigate to</param>
-        public void AddBranchToPage(Vector2 loc, Vector2 size, Sprite sprite, string nextPageName)
+        public void AddBranchToPage(Vector2 loc, Vector2 size, Sprite sprite, AudioClip sfx, string nextPageName)
         {
-            if (string.IsNullOrEmpty(nextPageName))
+            var branch = _storyBook.AddBranchToPage(loc, size, sprite, sfx, nextPageName, _currentId);
+            
+            if(branch != null)
             {
-                nextPageName = "Next Page " + _storyBook.Pages.Count.ToString();
-            }
-            var branch = new StoryBranchModel()
-            {
-                ImageSprite = sprite,
-                ItemLocation = loc,
-                ItemSize = size,
-                NextPageName = nextPageName,
-            };
-
-            if (sprite != null)
-            {
-                branch.Image = sprite.name;
+                Branches.Add(branch);
+                if (_fileService != null)
+                    _fileService.SaveBook(_storyBook, FileService.PATH);
+                else
+                    Debug.LogWarning("Book update and no file service initialized");
+                BookUpdated();
             }
             else
             {
-                branch.Image = string.Empty;
-            }
-            var page = new StoryPageModel()
-            {
-                Name = nextPageName
-            };
-            var currentPage = (from p in _storyBook.Pages
-                               where p.Id == _currentId
-                               select p).FirstOrDefault();
-            if (currentPage != null)
-            {
-                currentPage.Branches.Add(branch.Id);
-            }
-            branch.NextPageId = page.Id;
-            _storyBook.Pages.Add(page);
-            _storyBook.Branches.Add(branch);
-            Branches.Add(branch);
-            if (_fileService != null)
-                _fileService.SaveBook(_storyBook, FileService.PATH);
-            else
-                Debug.LogWarning("Book update and no file service initialized");
+                Debug.LogError("Failed to save branch");
+            }            
         }
         /// <summary>
         /// Forces the book to update after editor performs operation on it
@@ -219,76 +311,24 @@ namespace StoryBookEditor
             if (_fileService == null)
                 return;
             //change occured, I need to update the book with the current page, branches
-            #region Look for changes
-            var matchingPage = (from p in _storyBook.Pages
-                                where p.Id == _currentId
-                                select p).FirstOrDefault();
-            if (matchingPage != null)
-            {
-                #region Name
-                if (matchingPage.Name != PageName)
-                {
-                    matchingPage.Name = PageName;
-                }
-                #endregion
-                #region Image
-                if (PageImage == null && !string.IsNullOrEmpty(matchingPage.Background))
-                {
-                    matchingPage.Background = string.Empty;
-                }
-                else if (PageImage != null && PageImage.name != matchingPage.Background)
-                {
-                    matchingPage.Background = PageImage.name;
-                }
-                #endregion
-                #region Branches
-                //get current matching branches
-                //update each branch
-                Branches.ToList().ForEach(x =>
-                {
-                    var index = _storyBook.Branches.ToList().IndexOf(x);
-                    if (index >= 0)
-                    {
-                        if (x.ImageSprite == null)
-                        {
-                            _storyBook.Branches[index].Image = string.Empty;
-                        }
-                        else if (_storyBook.Branches[index].Image != x.ImageSprite.name)
-                        {
-                            _storyBook.Branches[index].Image = x.ImageSprite.name;
-                        }
-                        if (_storyBook.Branches[index].ItemLocation.x != x.ItemLocation.x ||
-                                _storyBook.Branches[index].ItemLocation.y != x.ItemLocation.y)
-                        {
-                            _storyBook.Branches[index].ItemLocation = x.ItemLocation;
-                        }
-                        if (_storyBook.Branches[index].ItemSize.x != x.ItemSize.x ||
-                                _storyBook.Branches[index].ItemSize.y != x.ItemSize.y)
-                        {
-                            _storyBook.Branches[index].Image = x.Image;
-                        }
-                    }
-                    else
-                    {
-                        Debug.LogError("Unable to find branch in book");
-                    }
-                });
-                #endregion
-            }
+            if (!_storyBook.UpdatePage(_currentId, PageName, PageImage, BackgroundMusicClip, Branches.ToArray()))
+                Debug.LogError("Book update failed");
             else
             {
-                Debug.LogError("Page updated, unable to find in story book");
-            }
-            #endregion
-            _fileService.SaveBook(_storyBook, FileService.PATH);
-            DrawBook();
+                _fileService.SaveBook(_storyBook, FileService.PATH);
+                DrawBook();
+            }                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
         }
+
         /// <summary>
         /// Public method to allow the loading of the page
         /// </summary>
         /// <param name="id">The page ID to load</param>
-        public void LoadPage(string id)
+        public void LoadPage(string id, StoryBranchModel from)
         {
+            if (id == _currentId)
+                return;
+
             var page = (from p in _storyBook.Pages
                         where p.Id == id
                         select p).FirstOrDefault();
@@ -311,8 +351,46 @@ namespace StoryBookEditor
             Branches = (from b in _storyBook.Branches
                         where page.Branches.Contains(b.Id)
                         select b).ToList();
+            Branches.ForEach(x => x.SFXClip = string.IsNullOrEmpty(x.SFX) ? null : Resources.Load<AudioClip>(x.SFX));
 
             PageName = page.Name;
+            #region Background Music
+            if (string.IsNullOrEmpty(page.BackgroundMusic))
+            {
+                BackgroundMusic.Stop();
+                BackgroundMusicClip = null;
+                BackgroundMusic.clip = null;
+            }
+            else if (BackgroundMusicClip == null || (BackgroundMusicClip.name != page.BackgroundMusic))
+            {
+                if (BackgroundMusicClip != null && (BackgroundMusicClip.name != page.BackgroundMusic))
+                {
+                    BackgroundMusic.Stop();
+                }
+
+                BackgroundMusicClip = Resources.Load<AudioClip>(page.BackgroundMusic);
+                //play fx
+                if (BackgroundMusicClip && Application.isPlaying)
+                {
+                    BackgroundMusic.clip = BackgroundMusicClip;
+                    BackgroundMusic.Play();
+                }
+            }
+            else if(!BackgroundMusic.isPlaying && Application.isPlaying)
+            {
+                BackgroundMusic.time = 0;
+                BackgroundMusic.Play();
+            }
+            #endregion
+            if (previousScreen != null)
+            {
+                DestroyImmediate(previousScreen);
+            }
+            previousScreen = new GameObject("prevScreen");
+            previousScreen.transform.localScale = gameObject.transform.localScale;
+            var tmp = previousScreen.AddComponent<SpriteRenderer>();
+            tmp.sprite = PageImage;
+            tmp.enabled = false;
             //load bg
             if (string.IsNullOrEmpty(page.Background))
             {
@@ -322,10 +400,24 @@ namespace StoryBookEditor
             {
                 PageImage = Resources.Load<Sprite>(page.Background);
             }
+            if (nextScreen != null)
+                DestroyImmediate(nextScreen);
+            nextScreen = new GameObject("nextScreen");
+            nextScreen.transform.localScale = gameObject.transform.localScale;
+            tmp = nextScreen.AddComponent<SpriteRenderer>();
+            tmp.sprite = PageImage;
+            tmp.enabled = false;
+
             //determine if can back
             PageCanBack = _initPage != _currentId;
             //render ui
             DrawBook();
+            
+            //Call event
+            if (PageChanged != null)
+            {
+                PageChanged(page, new PageChangedEventArgs() { Branch = from });
+            }
         }
         /// <summary>
         /// Function to the previous page
@@ -334,11 +426,11 @@ namespace StoryBookEditor
         {
             if (BackStack.Any())
             {
-                LoadPage(BackStack.Pop());
+                LoadPage(BackStack.Pop(), null);
             }
             else
             {
-                LoadPage(_initPage);
+                LoadPage(_initPage, null);
             }
         }
         #endregion

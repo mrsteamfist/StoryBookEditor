@@ -20,8 +20,11 @@ namespace StoryBookEditor
         public Vector2 ItemSize;
         public string Image;
         public string NextPageId = string.Empty;
-        public Sprite ImageSprite;
         public string NextPageName;
+        public string SFX;
+
+        public Sprite ImageSprite;
+        public AudioClip SFXClip;
 
         public GameObject GameObj { get; set; }
         /// <summary>

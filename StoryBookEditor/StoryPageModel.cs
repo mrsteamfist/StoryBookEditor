@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace StoryBookEditor
 {
@@ -19,6 +20,8 @@ namespace StoryBookEditor
         public string Name;
         public string Background;
         public string Id;
+        public string BackgroundMusic;
+
         /// <summary>
         /// 
         /// </summary>
