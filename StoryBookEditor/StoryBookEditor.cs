@@ -21,6 +21,9 @@ namespace StoryBookEditor
         public static GUIContent SizeLabel = new GUIContent("Size");
         public static GUIContent SpriteLabel = new GUIContent("Image");
         public static GUIContent NextPageLabel = new GUIContent("Next Page");
+        public static GUIContent NewPageLabel = new GUIContent("New Page");
+        public static GUIContent BranchesLabel = new GUIContent("Branches");
+        public static GUIContent SettingsLabel = new GUIContent("Settings");
         public static GUILayoutOption ButtonWidth = GUILayout.Width(66);
 
         protected SerializedProperty PageName;
@@ -34,6 +37,9 @@ namespace StoryBookEditor
         protected Vector2 _location = Vector2.zero;
         protected Vector2 _size = new Vector2(1, 1);
         protected string _nextName = string.Empty;
+        protected bool _showNewPageContent = false;
+        protected bool _showBranches = false;
+        protected bool _showSettings = false;
 
         /// <summary>
         /// Invoked on enabled
@@ -80,51 +86,56 @@ namespace StoryBookEditor
             if (Branches.arraySize > 0)
             {
                 EditorGUILayout.Separator();
-                EditorGUILayout.PropertyField(Branches);
-                EditorGUI.indentLevel += 1;
-                
-                for (int i = 0; i < Branches.arraySize; i++)
+                _showBranches = EditorGUILayout.Foldout(_showBranches, BranchesLabel);
+                if (_showBranches)
                 {
-                    var property = Branches.GetArrayElementAtIndex(i);
-                    var nameProp = property.FindPropertyRelative("NextPageName");
-                    EditorGUILayout.LabelField("Branch:" + nameProp.stringValue);
-                    EditorGUILayout.PropertyField(property.FindPropertyRelative("ItemLocation"), LocationLabel);
-                    EditorGUILayout.PropertyField(property.FindPropertyRelative("ItemSize"), SizeLabel);
-                    EditorGUILayout.PropertyField(property.FindPropertyRelative("ImageSprite"), SpriteLabel);
-                    EditorGUILayout.PropertyField(property.FindPropertyRelative("NextPageName"), NextPageLabel);
-                    EditorGUILayout.PropertyField(property.FindPropertyRelative("SFXClip"), SFXLabel);
-                    EditorGUILayout.BeginHorizontal();
-                    if (GUILayout.Button("Go To", EditorStyles.miniButtonLeft, ButtonWidth))
+                    EditorGUI.indentLevel += 1;
+
+                    for (int i = 0; i < Branches.arraySize; i++)
                     {
-                        TargetBook.LoadPage(TargetBook.Branches[i].NextPageId, null);
+                        var property = Branches.GetArrayElementAtIndex(i);
+                        var nameProp = property.FindPropertyRelative("NextPageName");
+                        EditorGUILayout.LabelField("Branch:" + nameProp.stringValue);
+                        EditorGUILayout.PropertyField(property.FindPropertyRelative("ItemLocation"), LocationLabel);
+                        EditorGUILayout.PropertyField(property.FindPropertyRelative("ItemSize"), SizeLabel);
+                        EditorGUILayout.PropertyField(property.FindPropertyRelative("ImageSprite"), SpriteLabel);
+                        EditorGUILayout.PropertyField(property.FindPropertyRelative("NextPageName"), NextPageLabel);
+                        EditorGUILayout.PropertyField(property.FindPropertyRelative("SFXClip"), SFXLabel);
+                        EditorGUILayout.BeginHorizontal();
+                        if (GUILayout.Button("Go To", EditorStyles.miniButtonLeft, ButtonWidth))
+                        {
+                            TargetBook.LoadPage(TargetBook.Branches[i].NextPageId, null);
+                        }
+                        if (GUILayout.Button("Delete", EditorStyles.miniButtonRight, ButtonWidth))
+                        {
+                            TargetBook.DeleteBranch(TargetBook.Branches[i].Id);
+                        }
+                        EditorGUILayout.EndHorizontal();
                     }
-                    if (GUILayout.Button("Delete", EditorStyles.miniButtonRight, ButtonWidth))
-                    {
-                        TargetBook.DeleteBranch(TargetBook.Branches[i].Id);
-                    }
-                    EditorGUILayout.EndHorizontal();
                 }
             }
             #endregion
 
             #region New Page Area
             EditorGUILayout.Separator();
-            EditorGUILayout.LabelField("New Page");
-
-            _nextName = EditorGUILayout.TextField("New Page Name", _nextName);
-            _location = EditorGUILayout.Vector2Field("Item Location", _location);
-            _size = EditorGUILayout.Vector2Field("Item Size", _size);
-            _nextSfx = EditorGUILayout.ObjectField(new GUIContent("SFX"), _nextSfx, typeof(AudioClip), true) as AudioClip;
-            _nextImg = EditorGUILayout.ObjectField(new GUIContent("Item Image"), _nextImg, typeof(Sprite), true) as Sprite;
-
-            if (GUILayout.Button("Create"))
+            _showNewPageContent = EditorGUILayout.Foldout(_showNewPageContent, NewPageLabel);
+            if (_showNewPageContent)
             {
-                TargetBook.AddBranchToPage(_location, _size, _nextImg, _nextSfx, _nextName);
-                _location = Vector2.zero;
-                _size = new Vector2(1, 1);
-                _nextImg = null;
-                _nextSfx = null;
-                _nextName = string.Empty;
+                _nextName = EditorGUILayout.TextField("New Page Name", _nextName);
+                _location = EditorGUILayout.Vector2Field("Item Location", _location);
+                _size = EditorGUILayout.Vector2Field("Item Size", _size);
+                _nextSfx = EditorGUILayout.ObjectField(new GUIContent("SFX"), _nextSfx, typeof(AudioClip), true) as AudioClip;
+                _nextImg = EditorGUILayout.ObjectField(new GUIContent("Item Image"), _nextImg, typeof(Sprite), true) as Sprite;
+
+                if (GUILayout.Button("Create"))
+                {
+                    TargetBook.AddBranchToPage(_location, _size, _nextImg, _nextSfx, _nextName);
+                    _location = Vector2.zero;
+                    _size = new Vector2(1, 1);
+                    _nextImg = null;
+                    _nextSfx = null;
+                    _nextName = string.Empty;
+                }
             }
             EditorGUILayout.Separator();
             #endregion

@@ -17,7 +17,6 @@ namespace StoryBookEditor
     public class Startup
     {
         public const string StoryBookInstanceName = "StoryBook";
-        public const string SFXInstanceName = "SFXPlayer";
         protected static object updateLock = new object();
         protected static StoryBook _bookInstance = null;
         /// <summary>
@@ -27,7 +26,6 @@ namespace StoryBookEditor
         static Startup()
         {
             Debug.ClearDeveloperConsole();
-            Screen.SetResolution(800, 600, false);
             if(_bookInstance == null)
                 EditorApplication.update += Update;
         }
@@ -52,41 +50,10 @@ namespace StoryBookEditor
                         storyBookRoot.transform.localScale = new Vector3(1f, 1f);
                         _bookInstance = storyBookRoot.AddComponent<StoryBook>();
                         storyBookRoot.name = StoryBookInstanceName;
-
-                        var bgMixer = storyBookRoot.AddComponent<AudioSource>();
-                        bgMixer.playOnAwake = true;
-                        bgMixer.loop = true;
-                        _bookInstance.BackgroundMusic = bgMixer;
                     }
                     else
                     {
                         _bookInstance = storyBookRoot.GetComponent<StoryBook>();
-                        var bgMixer = storyBookRoot.GetComponent<AudioSource>();
-                        if (bgMixer == null)
-                            bgMixer = storyBookRoot.AddComponent<AudioSource>();
-                        bgMixer.playOnAwake = true;
-                        bgMixer.loop = true;
-                        _bookInstance.BackgroundMusic = bgMixer;
-                    }
-
-                    var sfxObj = (from e in UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects()
-                                         where e.name == SFXInstanceName
-                                  select e).FirstOrDefault();
-                    if(sfxObj == default(GameObject))
-                    {
-                        sfxObj = new GameObject();
-                        sfxObj.name = SFXInstanceName;
-                        var sfxMixer = sfxObj.AddComponent<AudioSource>();
-                        sfxMixer.loop = false;
-                        _bookInstance.SFX = sfxMixer;
-                    }
-                    else
-                    {
-                        var sfxMixer = sfxObj.GetComponent<AudioSource>();
-                        if(sfxMixer == null)
-                            sfxMixer = sfxObj.AddComponent<AudioSource>();
-                        sfxMixer.loop = false;
-                        _bookInstance.SFX = sfxMixer;
                     }
                 }
                 else

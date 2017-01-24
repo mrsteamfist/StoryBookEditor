@@ -139,7 +139,7 @@ namespace StoryBookEditor
                 ImageSprite = sprite,
                 ItemLocation = loc,
                 ItemSize = size,
-                SFX = sfx.name,
+                SFX = sfx == null ? null : sfx.name,
                 SFXClip = sfx,
                 NextPageName = nextPageName,
             };

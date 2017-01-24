@@ -51,8 +51,8 @@ namespace StoryBookEditorUnitTest
         public void AddBranchToPageTest()
         {
             var pageName = "next name";
-            var sfxName = "sfx name";
-            var spriteName = "sprite name";
+            //var sfxName = "sfx name";
+            //var spriteName = "sprite name";
             StoryBookModel model = new StoryBookModel();
             var page = new StoryPageModel();
             model.Pages.Add(page);
