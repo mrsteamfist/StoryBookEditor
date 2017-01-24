@@ -24,6 +24,9 @@ namespace StoryBookEditor
         public static GUIContent NewPageLabel = new GUIContent("New Page");
         public static GUIContent BranchesLabel = new GUIContent("Branches");
         public static GUIContent SettingsLabel = new GUIContent("Settings");
+        public static GUIContent TransitionLengthLabel = new GUIContent("Length of Transition");
+        public static GUIContent CurrentImageLabel = new GUIContent("Slide Start Image");
+        public static GUIContent NextImageLabel = new GUIContent("Slide End Image");
         public static GUILayoutOption ButtonWidth = GUILayout.Width(66);
 
         protected SerializedProperty PageName;
@@ -33,6 +36,10 @@ namespace StoryBookEditor
         protected SerializedProperty BackgroundClip;
 
         protected Sprite _nextImg;
+        protected Sprite _transCurrentImg;
+        protected Sprite _transNextImg;
+        protected int _transLength = 1000;
+        protected TransitionTypes _transType = TransitionTypes.None;
         protected AudioClip _nextSfx;
         protected Vector2 _location = Vector2.zero;
         protected Vector2 _size = new Vector2(1, 1);
@@ -101,6 +108,24 @@ namespace StoryBookEditor
                         EditorGUILayout.PropertyField(property.FindPropertyRelative("ImageSprite"), SpriteLabel);
                         EditorGUILayout.PropertyField(property.FindPropertyRelative("NextPageName"), NextPageLabel);
                         EditorGUILayout.PropertyField(property.FindPropertyRelative("SFXClip"), SFXLabel);
+                        property.FindPropertyRelative("TransitionType").intValue = (int)(TransitionTypes)EditorGUILayout.EnumPopup("Transition Type", (TransitionTypes)property.FindPropertyRelative("TransitionType").intValue);
+                        
+                        if((TransitionTypes)property.FindPropertyRelative("TransitionType").intValue == TransitionTypes.Slide)
+                        {
+                            EditorGUILayout.PropertyField(property.FindPropertyRelative("TransitionLength"), TransitionLengthLabel);
+                            EditorGUILayout.PropertyField(property.FindPropertyRelative("CurrentImageSprite"), CurrentImageLabel);
+                            EditorGUILayout.PropertyField(property.FindPropertyRelative("NextImageSprite"), NextImageLabel);
+                        }
+                        else if((TransitionTypes)property.FindPropertyRelative("TransitionType").intValue == TransitionTypes.Fade)
+                        {
+                            EditorGUILayout.PropertyField(property.FindPropertyRelative("TransitionLength"), TransitionLengthLabel);
+                        }
+                        else
+                        {
+                            property.FindPropertyRelative("TransitionLength").intValue = 1000;
+                            property.FindPropertyRelative("CurrentImageSprite").objectReferenceValue = null;
+                            property.FindPropertyRelative("NextImageSprite").objectReferenceValue = null;
+                        }
                         EditorGUILayout.BeginHorizontal();
                         if (GUILayout.Button("Go To", EditorStyles.miniButtonLeft, ButtonWidth))
                         {
@@ -126,15 +151,28 @@ namespace StoryBookEditor
                 _size = EditorGUILayout.Vector2Field("Item Size", _size);
                 _nextSfx = EditorGUILayout.ObjectField(new GUIContent("SFX"), _nextSfx, typeof(AudioClip), true) as AudioClip;
                 _nextImg = EditorGUILayout.ObjectField(new GUIContent("Item Image"), _nextImg, typeof(Sprite), true) as Sprite;
+                _nextImg = EditorGUILayout.ObjectField(new GUIContent("Item Image"), _nextImg, typeof(Sprite), true) as Sprite;
+
+                _transType = (TransitionTypes)EditorGUILayout.EnumPopup(new GUIContent("Transition Type"), _transType);
+                _transLength = EditorGUILayout.IntField(new GUIContent("Transition Length"), _transLength);
+                if (_transType == TransitionTypes.Slide)
+                {
+                    _transCurrentImg = EditorGUILayout.ObjectField(new GUIContent("Slide Start Image"), _nextImg, typeof(Sprite), true) as Sprite;
+                    _transNextImg = EditorGUILayout.ObjectField(new GUIContent("Slide End Image"), _nextImg, typeof(Sprite), true) as Sprite;
+                }
 
                 if (GUILayout.Button("Create"))
                 {
-                    TargetBook.AddBranchToPage(_location, _size, _nextImg, _nextSfx, _nextName);
+                    TargetBook.AddBranchToPage(_location, _size, _nextImg, _nextSfx, _transType, _transLength, _transCurrentImg, _transNextImg, _nextName);
                     _location = Vector2.zero;
                     _size = new Vector2(1, 1);
                     _nextImg = null;
                     _nextSfx = null;
                     _nextName = string.Empty;
+                    _transType = TransitionTypes.None;
+                    _transLength = 1000;
+                    _transCurrentImg = null;
+                    _transNextImg = null;
                 }
             }
             EditorGUILayout.Separator();

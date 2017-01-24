@@ -92,30 +92,7 @@ namespace StoryBookEditor
                 var index = Branches.ToList().IndexOf(x);
                 if (index >= 0)
                 {
-                    if (x.ImageSprite == null)
-                    {
-                        Branches[index].Image = string.Empty;
-                    }
-                    else
-                    {
-                        Branches[index].Image = x.ImageSprite.name;
-                    }
-                    Branches[index].ItemLocation = x.ItemLocation;
-                    if (Branches[index].ItemSize.x != x.ItemSize.x ||
-                            Branches[index].ItemSize.y != x.ItemSize.y)
-                    {
-                        Branches[index].Image = x.Image;
-                    }
-                    Branches[index].SFXClip = x.SFXClip;
-                    if (x.SFXClip == null)
-                    {
-                        Branches[index].SFX = null;
-                    }
-                    else
-                    {
-                        Branches[index].SFX = x.SFXClip.name;
-                    }
-                    Branches[index].NextPageId = GetPageId(x.NextPageName);
+                    Branches[index].CopyFrom(x);
                 }
                 else
                 {
@@ -126,32 +103,28 @@ namespace StoryBookEditor
             return true;
         }
  
-        public StoryBranchModel AddBranchToPage(Vector2 loc, Vector2 size, Sprite sprite, AudioClip sfx, string nextPageName, string currentId)
+        public StoryBranchModel AddBranchToPage(Vector2 loc, Vector2 size, Sprite sprite, AudioClip sfx,
+            TransitionTypes transition, int transitionLength, Sprite currentImage, Sprite nextImage, string nextPageName, string currentId)
         {
             StoryBranchModel reply = null;
             if (string.IsNullOrEmpty(nextPageName))
             {
                 nextPageName = "Next Page " + Pages.Count.ToString();
             }
-
+            //Todo: turn this into a contructor to ensure variables being set
             reply = new StoryBranchModel()
             {
                 ImageSprite = sprite,
                 ItemLocation = loc,
                 ItemSize = size,
-                SFX = sfx == null ? null : sfx.name,
                 SFXClip = sfx,
                 NextPageName = nextPageName,
+                TransitionType = transition,
+                TransitionLength = transitionLength,
+                CurrentImageSprite = currentImage,
+                NextImageSprite= nextImage,
             };
-
-            if (sprite != null)
-            {
-                reply.Image = sprite.name;
-            }
-            else
-            {
-                reply.Image = string.Empty;
-            }
+            reply.CopyObjsIntoStrings();
 
             var page = Pages.Where(x => x.Name.ToLower() == nextPageName.ToLower()).FirstOrDefault();
             if (page == null)

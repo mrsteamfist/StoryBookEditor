@@ -122,9 +122,25 @@ namespace StoryBookEditor
                         hitItem.First().SFXClip = Resources.Load<AudioClip>(hitItem.First().SFX);
                     _audioManager.PlaySFX(hitItem.First().SFXClip);
                 }
-
-                LoadPage(hitItem.First().NextPageId, hitItem.First());
-                _screenManager.BeginFade();
+                if(hitItem.First().TransitionType == TransitionTypes.Fade)
+                {
+                    _screenManager.TransitionComplete += (o, a) =>
+                    {
+                        LoadPage(hitItem.First().NextPageId, hitItem.First());
+                    };
+                    _screenManager.BeginFade();
+                }
+                else if(hitItem.First().TransitionType == TransitionTypes.Slide)
+                {
+                    _screenManager.TransitionComplete += (o, a) =>
+                    {
+                        LoadPage(hitItem.First().NextPageId, hitItem.First());
+                    };
+                    _screenManager.BeginSlide(hitItem.First().CurrentImageSprite, hitItem.First().NextImageSprite);
+                }
+                else
+                    LoadPage(hitItem.First().NextPageId, hitItem.First());
+                
             }
             else
             {
@@ -157,9 +173,10 @@ namespace StoryBookEditor
         /// <param name="size">Size of the next item</param>
         /// <param name="sprite">Sprite to show the next item</param>
         /// <param name="nextPageName">Title of that page the branch will navigate to</param>
-        public void AddBranchToPage(Vector2 loc, Vector2 size, Sprite sprite, AudioClip sfx, string nextPageName)
+        public void AddBranchToPage(Vector2 loc, Vector2 size, Sprite sprite, AudioClip sfx,
+            TransitionTypes transition, int transitionLength, Sprite currentImage, Sprite nextImage, string nextPageName)
         {
-            var branch = _storyBook.AddBranchToPage(loc, size, sprite, sfx, nextPageName, _currentId);
+            var branch = _storyBook.AddBranchToPage(loc, size, sprite, sfx, transition, transitionLength, currentImage, nextImage, nextPageName, _currentId);
 
             if (branch != null)
             {
@@ -223,8 +240,7 @@ namespace StoryBookEditor
             Branches = (from b in _storyBook.Branches
                         where page.Branches.Contains(b.Id)
                         select b).ToList();
-            Branches.ForEach(x => x.ImageSprite = string.IsNullOrEmpty(x.Image) ? null : Resources.Load<Sprite>(x.Image));
-            Branches.ForEach(x => x.SFXClip = string.IsNullOrEmpty(x.SFX) ? null : Resources.Load<AudioClip>(x.SFX));
+            Branches.ForEach(x => x.LoadResourcesFromStrings());
 
             PageName = page.Name;
             if (!string.IsNullOrEmpty(page.Background))

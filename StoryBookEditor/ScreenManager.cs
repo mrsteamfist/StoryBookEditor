@@ -6,11 +6,26 @@ using UnityEngine.SceneManagement;
 
 namespace StoryBookEditor
 {
+    public enum TransitionTypes
+    {
+        None,
+        Fade,
+        Slide,
+    }
+
+    public enum SlideDirections
+    {
+        Left,
+        Right,
+        Top,
+        Buttom,
+    }
+
     [ExecuteInEditMode]
     public class ScreenManager : MonoBehaviour
     {
         #region All Transition User Editable Properties
-        protected int SelectedTransitionType = 0;
+        protected TransitionTypes SelectedTransitionType = TransitionTypes.None;
         protected Texture2D _fadeImage;
         protected int InSpeedMs = 500;
 
@@ -45,11 +60,12 @@ namespace StoryBookEditor
         {
             if (SpriteRenderer == null && (SpriteRenderer = GetComponent<SpriteRenderer>()) == null)
                 SpriteRenderer = gameObject.AddComponent<SpriteRenderer>();
+            _fadeImage = Resources.Load<Texture2D>("FadeImg");
         }
 
         public float BeginFade(int direction = -1)
         {
-            SelectedTransitionType = 0;
+            SelectedTransitionType = TransitionTypes.Fade;
             FadeDir = direction;
             if (direction == -1)
                 fadeAlpha = 1f;
@@ -58,9 +74,6 @@ namespace StoryBookEditor
 
             return InSpeedMs / 1000;
         }
-
-        public readonly static string[] TransitionTypes = new string[] { "Fade", "Slide" };
-        public readonly static string[] SlideDirections = new string[] { "Left", "Right", "Top", "Buttom" };
 
         private double _timeoutBucket;
 
@@ -72,16 +85,15 @@ namespace StoryBookEditor
                 ItemClickDelegate(id);
         }
 
-        public void BeginSlide(Sprite startObj, Sprite endObj, int dir = 0)
+        public void BeginSlide(Sprite startObj, Sprite endObj, SlideDirections dir = SlideDirections.Left)
         {
             if (startObj == null)
                 return;
 
-            SelectedTransitionType = 1;
+            SelectedTransitionType = TransitionTypes.Slide;
 
             _currentPageImage = GameObject.Find(CURRENT_SPRITE);
             var spriteRender = transform.GetComponent<SpriteRenderer>();
-            spriteRender.sortingOrder = 2;
             SpriteRenderer sr;
 
             if (_currentPageImage == null)
@@ -95,7 +107,7 @@ namespace StoryBookEditor
             {
                 sr = _currentPageImage.GetComponent<SpriteRenderer>();
             }
-            
+            sr.sortingOrder = 2;
             sr.sprite = startObj;
             _currentPageImage.transform.localPosition = new Vector3(transform.localPosition.x, transform.localPosition.y, transform.localPosition.z-0.9f);
             _currentPageImage.transform.localScale = transform.localScale;
@@ -189,7 +201,7 @@ namespace StoryBookEditor
                 return;
             }
             //Handle the fade transition
-            if (SelectedTransitionType == 0 && _fadeImage != null && fadeAlpha <= 1.0f && fadeAlpha >= 0.0f)
+            if (SelectedTransitionType == TransitionTypes.Fade && _fadeImage != null && fadeAlpha <= 1.0f && fadeAlpha >= 0.0f)
             {
                 fadeAlpha += (float)(FadeDir * (1000f / InSpeedMs) * _timeoutBucket);
                 fadeAlpha = Mathf.Clamp01(fadeAlpha);
@@ -201,19 +213,26 @@ namespace StoryBookEditor
                 if (fadeAlpha == 0.00f || fadeAlpha == 1.00f)
                 {
                     fadeAlpha = -1;
-
+                    SelectedTransitionType = TransitionTypes.None;
                     if (TransitionComplete != null)
                         TransitionComplete(this, EventArgs.Empty);
                 }
             }
+            else if(SelectedTransitionType == TransitionTypes.Fade)
+            {
+                SelectedTransitionType = TransitionTypes.None;
+                if (TransitionComplete != null)
+                    TransitionComplete(this, EventArgs.Empty);
+            }
             //Handle Slide Transition
-            else if (SelectedTransitionType == 1 && _nextPageImage != null)
+            else if (SelectedTransitionType == TransitionTypes.Slide && _nextPageImage != null)
             {
                 Vector3 delta = transform.localPosition - _nextPageImage.transform.localPosition;
                 float slideOffset = (float)((1000d / InSpeedMs) * _timeoutBucket);
 
                 if (Math.Abs(delta.x) <= slideOffset && Math.Abs(delta.y) <= slideOffset)
                 {
+                    SelectedTransitionType = TransitionTypes.None;
                     DestroyImmediate(_nextPageImage);
                     if(_currentPageImage)
                         DestroyImmediate(_currentPageImage);
@@ -248,6 +267,16 @@ namespace StoryBookEditor
                     }
                 }
             }
+            else if(SelectedTransitionType == TransitionTypes.Slide)
+            {
+                SelectedTransitionType = TransitionTypes.None;
+                DestroyImmediate(_nextPageImage);
+                if (_currentPageImage)
+                    DestroyImmediate(_currentPageImage);
+
+                if (TransitionComplete != null)
+                    TransitionComplete(this, EventArgs.Empty);
+            }
 
             _timeoutBucket = 0;
         }
@@ -257,7 +286,7 @@ namespace StoryBookEditor
         /// </summary>
         private void Update()
         {
-            if(_currentPageImage != null && _fadeImage != null)
+            if(SelectedTransitionType != TransitionTypes.None)
             {
                 
             }
@@ -305,6 +334,7 @@ namespace StoryBookEditor
             {
                 _pageBg = pageBackground;
                 SpriteRenderer.sprite = _pageBg;
+                SpriteRenderer.sortingOrder = 0;
             }
 
             _branches = branches;
