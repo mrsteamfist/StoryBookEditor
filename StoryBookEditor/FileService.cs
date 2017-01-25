@@ -14,7 +14,31 @@ namespace StoryBookEditor
     /// </summary>
     public class FileService : IFileService
     {
-        public static string PATH = System.IO.Path.Combine(Application.dataPath, @"Resources\game.story");
+#if TARGET_SCENE
+        protected static string FILE_EXTENTION = "{0}.story";
+        protected static string PATH = System.IO.Path.Combine(Application.dataPath, @"Resources\");
+#else
+        protected static string PATH = System.IO.Path.Combine(Application.dataPath, @"Resources\game.story");
+#endif
+
+
+        public static bool DoesFileExist()
+        {
+            Debug.Log("Found " + File.Exists(GetFileName()).ToString());
+            return File.Exists(GetFileName());
+        }
+
+        public static string GetFileName()
+        {
+#if TARGET_SCENE
+            string file = string.Format(FILE_EXTENTION, UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+            Debug.Log("File: " + file);
+            return Path.Combine(PATH, file);
+#else
+            return PATH;
+#endif
+        }
+
         static object fileLock = new object();
         /// <summary>
         /// Operation to read the story book from path

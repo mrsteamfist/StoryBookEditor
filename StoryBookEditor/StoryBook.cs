@@ -75,14 +75,14 @@ namespace StoryBookEditor
 
             if (_storyBook == null)
             {
-                if (File.Exists(FileService.PATH))
-                    _storyBook = _fileService.ReadBook(FileService.PATH);
+                if (FileService.DoesFileExist())
+                    _storyBook = _fileService.ReadBook(FileService.GetFileName());
                 #region Create book if it doesn't exist
                 if (_storyBook == null)
                 {
                     Debug.LogWarning("First time book load null, re-initing it");
                     _storyBook = new StoryBookModel();
-                    _fileService.SaveBook(_storyBook, FileService.PATH);
+                    _fileService.SaveBook(_storyBook, FileService.GetFileName());
                 }
                 #endregion
                 #region Make new book if there isn't any
@@ -100,7 +100,7 @@ namespace StoryBookEditor
                         Debug.LogWarning("Unable to load default background sprite");
                     PageCanBack = false;
                     Branches.Clear();
-                    _fileService.SaveBook(_storyBook, FileService.PATH);
+                    _fileService.SaveBook(_storyBook, FileService.GetFileName());
                     LoadPage(_currentId, null);
                 }
                 #endregion
@@ -159,7 +159,7 @@ namespace StoryBookEditor
             if (_storyBook.Branches.RemoveAll((b) => b.Id == id) > 0)
             {
                 if (_fileService != null)
-                    _fileService.SaveBook(_storyBook, FileService.PATH);
+                    _fileService.SaveBook(_storyBook, FileService.GetFileName());
             }
             if (Branches.RemoveAll((b) => b.Id == id) > 0)
             {
@@ -182,7 +182,7 @@ namespace StoryBookEditor
             {
                 Branches.Add(branch);
                 if (_fileService != null)
-                    _fileService.SaveBook(_storyBook, FileService.PATH);
+                    _fileService.SaveBook(_storyBook, FileService.GetFileName());
                 else
                     Debug.LogWarning("Book update and no file service initialized");
                 BookUpdated();
@@ -204,7 +204,7 @@ namespace StoryBookEditor
                 Debug.LogError("Book update failed");
             else
             {
-                _fileService.SaveBook(_storyBook, FileService.PATH);
+                _fileService.SaveBook(_storyBook, FileService.GetFileName());
                 _screenManager.UpdateDraw(PageImage, Branches);
             }
         }

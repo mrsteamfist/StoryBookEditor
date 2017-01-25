@@ -136,10 +136,21 @@ namespace StoryBookEditor
 
         protected void setupui()
         {
+            if(Camera.main == null && Camera.allCamerasCount > 0)
+            {
+                Camera.allCameras[0].tag = "MainCamera";
+            }
+
+            Debug.Log(Camera.allCameras[0].tag);
             if (Camera.main == null || Screen.height < 1 || Screen.width < 1)
             {
+                Debug.LogError("Error draw scene UI");
                 return;
             }
+
+            if (!Camera.main.orthographic)
+                Camera.main.orthographic = true;
+            Camera.main.transform.position = new Vector3(0, 0, -10);
 
             var worldScreenHeight = Camera.main.orthographicSize * 2.0;
 
