@@ -45,6 +45,7 @@ namespace StoryBookEditor
         #endregion
         #region Display requirements
         protected StoryBookModel _storyBook;
+        public StoryBookModel StoryBookData { get { return _storyBook; } }
         protected ScreenManager _screenManager;
         protected AudioManager _audioManager;
         #endregion
@@ -66,7 +67,7 @@ namespace StoryBookEditor
                 _screenManager.OnEnable();
             }
             _screenManager.ItemClickDelegate = BranchClicked;
-
+            
             if (_audioManager == null && (_audioManager = GetComponent<AudioManager>()) == null)
             {
                 _audioManager = gameObject.AddComponent<AudioManager>();
@@ -85,6 +86,9 @@ namespace StoryBookEditor
                     _fileService.SaveBook(_storyBook, FileService.GetFileName());
                 }
                 #endregion
+
+                _screenManager.StoryBookInstance = _storyBook;
+
                 #region Make new book if there isn't any
                 if (_storyBook.Pages == null || !_storyBook.Pages.Any())
                 {
@@ -111,35 +115,40 @@ namespace StoryBookEditor
             }
         }
 
-        public void BranchClicked(string id)
+        public void BranchClicked(StoryBranchModel hitItem)
         {
-            var hitItem = Branches.Where(x => x.Id == id);
-            if (id != null && hitItem != null && hitItem.Any())
+            if (hitItem != null)
             {
-                if (!string.IsNullOrEmpty(hitItem.First().SFX))
+                //Set and clear variables
+                _storyBook.SetVariables(hitItem);
+                _storyBook.ClearVariables(hitItem);
+
+                //Play SFX
+                if (!string.IsNullOrEmpty(hitItem.SFX))
                 {
-                    if (hitItem.First().SFXClip == null)
-                        hitItem.First().SFXClip = Resources.Load<AudioClip>(hitItem.First().SFX);
-                    _audioManager.PlaySFX(hitItem.First().SFXClip);
+                    if (hitItem.SFXClip == null)
+                        hitItem.SFXClip = Resources.Load<AudioClip>(hitItem.SFX);
+                    _audioManager.PlaySFX(hitItem.SFXClip);
                 }
-                if(hitItem.First().TransitionType == TransitionTypes.Fade)
+                //Perform Fades
+                if(hitItem.TransitionType == TransitionTypes.Fade)
                 {
                     _screenManager.TransitionComplete += (o, a) =>
                     {
-                        LoadPage(hitItem.First().NextPageId, hitItem.First());
+                        LoadPage(hitItem.NextPageId, hitItem);
                     };
                     _screenManager.BeginFade();
                 }
-                else if(hitItem.First().TransitionType == TransitionTypes.Slide)
+                else if(hitItem.TransitionType == TransitionTypes.Slide)
                 {
                     _screenManager.TransitionComplete += (o, a) =>
                     {
-                        LoadPage(hitItem.First().NextPageId, hitItem.First());
+                        LoadPage(hitItem.NextPageId, hitItem);
                     };
-                    _screenManager.BeginSlide(hitItem.First().CurrentImageSprite, hitItem.First().NextImageSprite);
+                    _screenManager.BeginSlide(hitItem.CurrentImageSprite, hitItem.NextImageSprite);
                 }
                 else
-                    LoadPage(hitItem.First().NextPageId, hitItem.First());
+                    LoadPage(hitItem.NextPageId, hitItem);
                 
             }
             else
@@ -165,6 +174,25 @@ namespace StoryBookEditor
             {
                 BookUpdated();
             }
+        }
+        public void DeletePage(string id)
+        {
+            var page = _storyBook.Pages.Where(x => x.Id == id).FirstOrDefault();
+            if(page != null)
+            {
+                _storyBook.Branches.RemoveAll(x => page.Branches.Contains(x.Id));
+                _storyBook.Branches.RemoveAll(x => x.NextPageId == page.Id);
+                if (_storyBook.Pages.RemoveAll((b) => b.Id == id) > 0)
+                {
+                    if (_fileService != null)
+                        _fileService.SaveBook(_storyBook, FileService.GetFileName());
+                }
+                if (Branches.RemoveAll((b) => page.Branches.Contains(b.Id)) > 0 ||
+                    false)
+                {
+                    BookUpdated();
+                }
+            }            
         }
         /// <summary>
         /// Adds a new branch to the current page and adds a page to that branch

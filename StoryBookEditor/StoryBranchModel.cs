@@ -5,6 +5,7 @@
 *********************************/
 
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace StoryBookEditor
@@ -28,6 +29,13 @@ namespace StoryBookEditor
         public Sprite CurrentImageSprite;
         public string NextImage;
         public Sprite NextImageSprite;
+        public List<string> PreVariables;
+        public List<string> PostVariables;
+        public List<string> ReverseVariables;
+        //Helper vars for editor
+        public bool IsPreVariablesOpen = false;
+        public bool IsPostVariablesOpen = false;
+        public bool IsReverseVariablesOpen = false;
 
         public Sprite ImageSprite;
         public AudioClip SFXClip;
@@ -39,8 +47,22 @@ namespace StoryBookEditor
         public StoryBranchModel()
         {
             Id = Guid.NewGuid().ToString();
+            PreVariables = new List<string>();
+            PostVariables = new List<string>();
+            ReverseVariables = new List<string>();
+        }
+
+        public bool DidClick(int x, int y)
+        {
+            return ItemLocation.x <= x && x < ItemLocation.x + ItemSize.x &&
+                        ItemLocation.y <= y && y < ItemLocation.y + ItemSize.y;
         }
         
+        public bool IsAnyClick()
+        {
+            return ItemSize.x == 0 || ItemSize.y == 0;
+        }
+
         public void CopyObjsIntoStrings()
         {
             CurrentImage = CurrentImageSprite == null ? null : CurrentImageSprite.name;
@@ -112,7 +134,13 @@ namespace StoryBookEditor
             Utilities.CopySprite(other.NextImageSprite, other.NextImage, out NextImageSprite, out NextImage);
             Utilities.CopyAudioClip(other.SFXClip, other.SFX, out SFXClip, out SFX);
             GameObj = other.GameObj;
-            
+            PreVariables = other.PreVariables;
+            PostVariables = other.PostVariables;
+            ReverseVariables = other.ReverseVariables;
+            IsPreVariablesOpen = other.IsPreVariablesOpen;
+            IsPostVariablesOpen = other.IsPostVariablesOpen;
+            IsReverseVariablesOpen = other.IsReverseVariablesOpen;
+
             return this;
     }
 

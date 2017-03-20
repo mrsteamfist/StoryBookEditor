@@ -16,6 +16,7 @@ namespace StoryBookEditor
     [CanEditMultipleObjects]
     public class StoryBookEditor : Editor
     {
+        #region UI Elements
         public static GUIContent LocationLabel = new GUIContent("Location");
         public static GUIContent SFXLabel = new GUIContent("Sound Effect");
         public static GUIContent SizeLabel = new GUIContent("Size");
@@ -27,14 +28,22 @@ namespace StoryBookEditor
         public static GUIContent TransitionLengthLabel = new GUIContent("Length of Transition");
         public static GUIContent CurrentImageLabel = new GUIContent("Slide Start Image");
         public static GUIContent NextImageLabel = new GUIContent("Slide End Image");
+        public static GUIContent PreReqBranchLabel = new GUIContent("Required Variables");
+        public static GUIContent PostReqBranchLabel = new GUIContent("Set Variables");
+        public static GUIContent ClearBranchLabel = new GUIContent("Cleared Variables");
         public static GUILayoutOption ButtonWidth = GUILayout.Width(66);
+        public static GUILayoutOption WideButtonWidth = GUILayout.Width(133);
+        #endregion
 
+        #region Book Properties
         protected SerializedProperty PageName;
         protected SerializedProperty PagesBG;
         protected SerializedProperty PagesCanBack;
         protected SerializedProperty Branches;
         protected SerializedProperty BackgroundClip;
+        #endregion
 
+        #region Variables
         protected Sprite _nextImg;
         protected Sprite _transCurrentImg;
         protected Sprite _transNextImg;
@@ -47,6 +56,10 @@ namespace StoryBookEditor
         protected bool _showNewPageContent = false;
         protected bool _showBranches = false;
         protected bool _showSettings = false;
+        protected string _reverseBranchVariable = string.Empty;
+        protected string _preBranchVariable = string.Empty;
+        protected string _postBranchVariable = string.Empty;
+        #endregion
 
         /// <summary>
         /// Invoked on enabled
@@ -93,11 +106,10 @@ namespace StoryBookEditor
             if (Branches.arraySize > 0)
             {
                 EditorGUILayout.Separator();
-                _showBranches = EditorGUILayout.Foldout(_showBranches, BranchesLabel);
-                if (_showBranches)
+                if (_showBranches = EditorGUILayout.Foldout(_showBranches, BranchesLabel))
                 {
                     EditorGUI.indentLevel += 1;
-
+                    
                     for (int i = 0; i < Branches.arraySize; i++)
                     {
                         var property = Branches.GetArrayElementAtIndex(i);
@@ -126,6 +138,92 @@ namespace StoryBookEditor
                             property.FindPropertyRelative("CurrentImageSprite").objectReferenceValue = null;
                             property.FindPropertyRelative("NextImageSprite").objectReferenceValue = null;
                         }
+
+                        if(property.FindPropertyRelative("IsPreVariablesOpen").boolValue = EditorGUILayout.Foldout(property.FindPropertyRelative("IsPreVariablesOpen").boolValue, PreReqBranchLabel))
+                        {
+                            var preReqs = property.FindPropertyRelative("PreVariables");
+                            for (int j = 0; j < preReqs.arraySize; j++)
+                            {
+                                EditorGUILayout.BeginHorizontal();
+                                var oldVal = preReqs.GetArrayElementAtIndex(j).stringValue;
+                                preReqs.GetArrayElementAtIndex(j).stringValue = EditorGUILayout.TextField(preReqs.GetArrayElementAtIndex(j).stringValue);
+                                if (oldVal != preReqs.GetArrayElementAtIndex(j).stringValue)
+                                    TargetBook.BookUpdated();
+                                if (GUILayout.Button("Delete Variable", EditorStyles.miniButtonRight, WideButtonWidth))
+                                {
+                                    TargetBook.Branches[i].PreVariables.RemoveAt(j);
+                                    _preBranchVariable = string.Empty;
+                                    TargetBook.BookUpdated();
+                                }
+                                EditorGUILayout.EndHorizontal();
+                            }
+                            EditorGUILayout.BeginHorizontal();
+                            _preBranchVariable = EditorGUILayout.TextField(_preBranchVariable);
+                            if (GUILayout.Button("Add Variable", EditorStyles.miniButtonRight, WideButtonWidth))
+                            {
+                                TargetBook.Branches[i].PreVariables.Add(_preBranchVariable);
+                                _preBranchVariable = string.Empty;
+                                TargetBook.BookUpdated();
+                            }
+                            EditorGUILayout.EndHorizontal();
+                        }
+                        if (property.FindPropertyRelative("IsPostVariablesOpen").boolValue = EditorGUILayout.Foldout(property.FindPropertyRelative("IsPostVariablesOpen").boolValue, PostReqBranchLabel))
+                        {
+                            var preReqs = property.FindPropertyRelative("PostVariables");
+                            for (int j = 0; j < preReqs.arraySize; j++)
+                            {
+                                EditorGUILayout.BeginHorizontal();
+                                var oldVal = preReqs.GetArrayElementAtIndex(j).stringValue;
+                                preReqs.GetArrayElementAtIndex(j).stringValue = EditorGUILayout.TextField(preReqs.GetArrayElementAtIndex(j).stringValue);
+                                if (oldVal != preReqs.GetArrayElementAtIndex(j).stringValue)
+                                    TargetBook.BookUpdated();
+                                if (GUILayout.Button("Delete Variable", EditorStyles.miniButtonRight, WideButtonWidth))
+                                {
+                                    TargetBook.Branches[i].PostVariables.RemoveAt(j);
+                                    _preBranchVariable = string.Empty;
+                                    TargetBook.BookUpdated();
+                                }
+                                EditorGUILayout.EndHorizontal();
+                            }
+                            EditorGUILayout.BeginHorizontal();
+                            _postBranchVariable = EditorGUILayout.TextField(_postBranchVariable);
+                            if (GUILayout.Button("Add Variable", EditorStyles.miniButtonRight, WideButtonWidth))
+                            {
+                                TargetBook.Branches[i].PostVariables.Add(_postBranchVariable);
+                                _postBranchVariable = string.Empty;
+                                TargetBook.BookUpdated();
+                            }
+                            EditorGUILayout.EndHorizontal();
+                        }
+                        if (property.FindPropertyRelative("IsReverseVariablesOpen").boolValue = EditorGUILayout.Foldout(property.FindPropertyRelative("IsReverseVariablesOpen").boolValue, ClearBranchLabel))
+                        {
+                            var preReqs = property.FindPropertyRelative("ReverseVariables");
+                            for(int j = 0; j < preReqs.arraySize; j++ )
+                            {
+                                EditorGUILayout.BeginHorizontal();
+                                var oldVal = preReqs.GetArrayElementAtIndex(j).stringValue;
+                                preReqs.GetArrayElementAtIndex(j).stringValue = EditorGUILayout.TextField(preReqs.GetArrayElementAtIndex(j).stringValue);
+                                if(oldVal != preReqs.GetArrayElementAtIndex(j).stringValue)
+                                    TargetBook.BookUpdated();
+                                if (GUILayout.Button("Delete Variable", EditorStyles.miniButtonRight, WideButtonWidth))
+                                {
+                                    TargetBook.Branches[i].ReverseVariables.RemoveAt(j);
+                                    _preBranchVariable = string.Empty;
+                                    TargetBook.BookUpdated();
+                                }
+                                EditorGUILayout.EndHorizontal();
+                            }
+                            EditorGUILayout.BeginHorizontal();
+                            _reverseBranchVariable = EditorGUILayout.TextField(_reverseBranchVariable);
+                            if (GUILayout.Button("Add Variable", EditorStyles.miniButtonRight, WideButtonWidth))
+                            {
+                                TargetBook.Branches[i].ReverseVariables.Add(_reverseBranchVariable);
+                                _reverseBranchVariable = string.Empty;
+                                TargetBook.BookUpdated();
+                            }
+                            EditorGUILayout.EndHorizontal();
+                        }
+
                         EditorGUILayout.BeginHorizontal();
                         if (GUILayout.Button("Go To", EditorStyles.miniButtonLeft, ButtonWidth))
                         {

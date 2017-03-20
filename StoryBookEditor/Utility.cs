@@ -2,7 +2,7 @@
 
 namespace StoryBookEditor
 {
-    public delegate void OnClickDelegate(string id);
+    public delegate void OnClickDelegate(StoryBranchModel id);
     public class Utilities
     {
         public static void CopySprite(Sprite source, string sourceName, out Sprite dest, out string destName)

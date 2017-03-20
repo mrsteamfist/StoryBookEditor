@@ -33,6 +33,7 @@ namespace StoryBookEditor
         protected SpriteRenderer SpriteRenderer { get; set; }
         protected Sprite _pageBg;
         protected IEnumerable<StoryBranchModel> _branches;
+        public StoryBookModel StoryBookInstance { get; set; }
         protected bool _isUIDirty;
 
         protected const float WIDTH_PERCENTAGE = .0625f;
@@ -79,7 +80,7 @@ namespace StoryBookEditor
 
         public event EventHandler TransitionComplete;
 
-        protected void OnClickHandler(string id)
+        protected void OnClickHandler(StoryBranchModel id)
         {
             if (ItemClickDelegate != null)
                 ItemClickDelegate(id);
@@ -159,7 +160,7 @@ namespace StoryBookEditor
             float scaley = (float)(worldScreenHeight / SpriteRenderer.sprite.bounds.size.y);
             SpriteRenderer.transform.localScale = new Vector3((float)Math.Min(scalex, scaley), (float)Math.Min(scalex, scaley), 1);
 
-            if (_pageBg != null)
+            if (_pageBg != null && StoryBookInstance != null)
             {
                 #region Display Branch Info
                 var halfX = SpriteRenderer.sprite.bounds.size.x / 2f;
@@ -171,7 +172,7 @@ namespace StoryBookEditor
                 {
                     foreach (var branch in _branches)
                     {
-                        if (branch.GameObj != null)
+                        if (branch.GameObj != null && (Application.isEditor || StoryBookInstance.ShowBranch(branch)))
                         {
                             var sR = branch.GameObj.AddComponent<SpriteRenderer>();
                             sR.sprite = branch.ImageSprite;
@@ -196,7 +197,6 @@ namespace StoryBookEditor
             _isUIDirty = false;
         }
 
-        
         public void OnGUI()
         {
             if (_isUIDirty)
@@ -301,22 +301,33 @@ namespace StoryBookEditor
             {
                 
             }
-            else if (_branches != null && _branches.Any() && Input.GetMouseButtonDown(0))
+            else if (Input.GetMouseButtonDown(0))
             {
                 var clickX = (float)Math.Floor(Input.mousePosition.x / (Screen.width * WIDTH_PERCENTAGE));
                 var clickY = (float)Math.Floor(Input.mousePosition.y / (Screen.height * HEIGHT_PERCENTAGE));
 
-                var hitItem = _branches.Where(x => x.ItemLocation != null && x.ItemLocation.x <= clickX && clickX < x.ItemLocation.x + x.ItemSize.x &&
-                        x.ItemLocation.y <= clickY && clickY < x.ItemLocation.y + x.ItemSize.y);
-                if (hitItem.Any())
+                var viewableBranches = _branches.Where(x => (StoryBookInstance == null || StoryBookInstance.ShowBranch(x)));
+                if(_branches == null || !_branches.Any() || !viewableBranches.Any())
                 {
-                    OnClickHandler(hitItem.First().Id);
+                    //If I have no branches fire default message
+                    OnClickHandler(null);
                 }
-            }
-            else if (Input.GetMouseButtonDown(0))
-            {
-                //If I have no branches with UI elements, fire default message
-                OnClickHandler(null);
+                else
+                {
+                    var validBranches = viewableBranches.Where(x => !string.IsNullOrEmpty(x.Image) && !x.IsAnyClick() && x.DidClick((int)clickX, (int)clickY));
+                    if (validBranches.Any())
+                    {
+                        OnClickHandler(validBranches.First());
+                    }
+                    else
+                    {
+                        validBranches = viewableBranches.Where(x => string.IsNullOrEmpty(x.Image) || x.IsAnyClick());
+                        if (validBranches.Any())
+                        {
+                            OnClickHandler(validBranches.First());
+                        }
+                    }
+                }
             }
         }
 
@@ -326,6 +337,11 @@ namespace StoryBookEditor
             {
                 Debug.LogError("Unable to load Story Book sprite renderer, please restart unity");
                 return;
+            }
+
+            if(StoryBookInstance == null)
+            {
+                Debug.LogError("No story book instance in screen manager.  Drawing all instances of ");
             }
 
             //ToDo, don't always clean up old branches, only if new content
@@ -352,14 +368,13 @@ namespace StoryBookEditor
             
             if (branches != null && branches.Any())
             {
-                foreach (var branch in branches)
+                foreach (var branch in branches.Where(x => 
+                        !string.IsNullOrEmpty(x.Image) && (StoryBookInstance == null || 
+                        StoryBookInstance.ShowBranch(x))))
                 {
-                    if (!string.IsNullOrEmpty(branch.Image))
-                    {
-                        branch.GameObj = new GameObject();
-                        branch.GameObj.name = "Branch " + branch.NextPageId;
-                        branch.GameObj.transform.SetParent(transform);
-                    }
+                    branch.GameObj = new GameObject();
+                    branch.GameObj.name = "Branch " + branch.NextPageId;
+                    branch.GameObj.transform.SetParent(transform);
                 }
             }
             _isUIDirty = true;

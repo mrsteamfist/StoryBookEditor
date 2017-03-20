@@ -7,7 +7,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.Audio;
 
 namespace StoryBookEditor
 {
@@ -16,11 +15,61 @@ namespace StoryBookEditor
         public List<StoryPageModel> Pages;
         public List<StoryBranchModel> Branches;
         public string BackgroundMusic;
+        public Dictionary<string, bool> StoryVariables;
 
         public StoryBookModel()
         {
             Pages = new List<StoryPageModel>();
             Branches = new List<StoryBranchModel>();
+            StoryVariables = new Dictionary<string, bool>();
+        }
+
+        public bool ShowBranch(StoryBranchModel branch)
+        {
+            if (branch == null)
+                return false;
+            if (branch.PreVariables == null)
+                return true;
+            var falsePre = branch.PreVariables.Where(x => !StoryVariables.ContainsKey(x) || !StoryVariables[x]);
+
+            return !falsePre.Any();
+
+        }
+
+        public void SetVariables(StoryBranchModel branch)
+        {
+            if (branch.PostVariables != null)
+            {
+                foreach(var variable in branch.PostVariables)
+                {
+                    if(StoryVariables.ContainsKey(variable))
+                    {
+                        StoryVariables[variable] = true;
+                    }
+                    else
+                    {
+                        StoryVariables.Add(variable, true);
+                    }
+                }
+            }
+        }
+
+        public void ClearVariables(StoryBranchModel branch)
+        {
+            if (branch.ReverseVariables != null)
+            {
+                foreach (var variable in branch.ReverseVariables)
+                {
+                    if (StoryVariables.ContainsKey(variable))
+                    {
+                        StoryVariables[variable] = false;
+                    }
+                    else
+                    {
+                        StoryVariables.Add(variable, false);
+                    }
+                }
+            }
         }
 
         public override bool Equals(object obj)

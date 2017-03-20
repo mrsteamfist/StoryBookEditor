@@ -31,10 +31,12 @@ namespace StoryBookEditor
         static Startup()
         {
             Debug.ClearDeveloperConsole();
-            if(_bookInstance == null)
+            if (_bookInstance == null)
                 EditorApplication.update += Update;
         }
-        
+
+        public static StoryBook BookInstance { get { return _bookInstance; } }
+
         /// <summary>
         /// Called on first update of Aplication
         /// Need to do this on first update to get scene object
@@ -51,7 +53,7 @@ namespace StoryBookEditor
                 if (_currentScene != UnityEngine.SceneManagement.SceneManager.GetActiveScene().name)
                 {
                     _currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-                    if(FileService.DoesFileExist())
+                    if (FileService.DoesFileExist())
                     {
                         var storyBookRoot = (from e in UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects()
                                              where e.name == StoryBookInstanceName
