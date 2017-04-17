@@ -329,6 +329,7 @@ namespace StoryBookEditor
                     AnimatingBranch = null;
                     LastTime = 0;
                 }
+                return;
             }
 
             if (SelectedTransitionType != TransitionTypes.None)
