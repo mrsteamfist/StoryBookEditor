@@ -32,6 +32,9 @@ namespace StoryBookEditor
         public OnClickDelegate ItemClickDelegate { get; set; }
         protected SpriteRenderer SpriteRenderer { get; set; }
         protected Animator Animator { get; set; }
+        protected float CurrentAnimationTime { get; set; }
+        protected StoryBranchModel AnimatingBranch { get; set; }
+        protected float LastTime { get; set; }
         protected Sprite _pageBg;
 
         protected IEnumerable<StoryBranchModel> _branches;
@@ -316,7 +319,19 @@ namespace StoryBookEditor
         /// </summary>
         private void Update()
         {
-            if(SelectedTransitionType != TransitionTypes.None)
+            if(CurrentAnimationTime > 0)
+            {
+                CurrentAnimationTime -= (Time.time - LastTime);
+                if (CurrentAnimationTime < 0f)
+                {
+                    OnClickHandler(AnimatingBranch);
+                    CurrentAnimationTime = 0;
+                    AnimatingBranch = null;
+                    LastTime = 0;
+                }
+            }
+
+            if (SelectedTransitionType != TransitionTypes.None)
             {
                 
             }
@@ -334,29 +349,18 @@ namespace StoryBookEditor
                 else
                 {
                     var validBranches = viewableBranches.Where(x => !string.IsNullOrEmpty(x.Image) && !x.IsAnyClick() && x.DidClick((int)clickX, (int)clickY));
-                    if (validBranches.Any())
-                    {
-                        var branch = validBranches.First();
-                        if(branch.AnimationType == BranchAnimation.Once)
-                        {
-                            var animator = branch.GameObj.GetComponent<Animator>();
-                            animator.StartPlayback();
-                        }
-                        OnClickHandler(branch);
-                    }
-                    else
+                    if (!validBranches.Any())
                     {
                         validBranches = viewableBranches.Where(x => string.IsNullOrEmpty(x.Image) || x.IsAnyClick());
-                        if (validBranches.Any())
-                        {
-                            var branch = validBranches.First();
-                            if (branch.AnimationType == BranchAnimation.Once)
-                            {
-                                var animator = branch.GameObj.GetComponent<Animator>();
-                                animator.StartPlayback();
-                            }
-                            OnClickHandler(branch);
-                        }
+                    }
+                    var branch = validBranches.First();
+                    if (branch.AnimationType == BranchAnimation.Once)
+                    {
+                        AnimatingBranch = branch;
+                        var animator = branch.GameObj.GetComponent<Animator>();
+                        animator.StartPlayback();
+                        CurrentAnimationTime = animator.GetCurrentAnimatorClipInfo(0).First().clip.length;
+                        LastTime = Time.time;
                     }
                 }
             }
