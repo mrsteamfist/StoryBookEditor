@@ -24,7 +24,7 @@ namespace StoryBookEditor
 
         public static bool DoesFileExist()
         {
-            Debug.Log("Found " + File.Exists(GetFileName()).ToString());
+            //Debug.Log("Found " + File.Exists(GetFileName()).ToString());
             return File.Exists(GetFileName());
         }
 
@@ -32,7 +32,7 @@ namespace StoryBookEditor
         {
 #if TARGET_SCENE
             string file = string.Format(FILE_EXTENTION, UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
-            Debug.Log("File: " + file);
+            //Debug.Log("File: " + file);
             return Path.Combine(PATH, file);
 #else
             return PATH;

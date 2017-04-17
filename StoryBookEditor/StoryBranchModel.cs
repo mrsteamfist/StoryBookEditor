@@ -10,6 +10,13 @@ using UnityEngine;
 
 namespace StoryBookEditor
 {
+    public enum BranchAnimation
+    {
+        None,
+        Loop,
+        Once,
+    }
+
     /// <summary>
     /// Story branch object
     /// </summary>
@@ -20,6 +27,7 @@ namespace StoryBookEditor
         public Vector2 ItemLocation;
         public Vector2 ItemSize;
         public string Image;
+        public string Animation;
         public string NextPageId = string.Empty;
         public string NextPageName;
         public string SFX;
@@ -27,6 +35,8 @@ namespace StoryBookEditor
         public int TransitionLength = 1000;
         public string CurrentImage;
         public Sprite CurrentImageSprite;
+        public BranchAnimation AnimationType = BranchAnimation.None;
+        public RuntimeAnimatorController CurrentAnimation;
         public string NextImage;
         public Sprite NextImageSprite;
         public List<string> PreVariables;
@@ -140,6 +150,8 @@ namespace StoryBookEditor
             IsPreVariablesOpen = other.IsPreVariablesOpen;
             IsPostVariablesOpen = other.IsPostVariablesOpen;
             IsReverseVariablesOpen = other.IsReverseVariablesOpen;
+            Animation = other.Animation;
+            CurrentAnimation = other.CurrentAnimation;
 
             return this;
     }

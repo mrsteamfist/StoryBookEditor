@@ -25,6 +25,7 @@ namespace StoryBookEditor
         #region Property Names
         public const string PAGE_NAME_PROPERTY = "PageName";
         public const string PAGE_IMAGE_PROPERTY = "PageImage";
+        public const string PAGE_ANIMATION_PROPERTY = "PageAnimation";
         public const string PAGE_CAN_BACK_PROPERTY = "PageCanBack";
         public const string BRANCHES_PROPERTY = "Branches";
         public const string BACKGROUND_CLIP_PROPERTY = "BackgroundMusicClip";
@@ -33,6 +34,7 @@ namespace StoryBookEditor
         protected string _currentId = string.Empty;
         public string PageName = null;
         public Sprite PageImage = null;
+        public RuntimeAnimatorController PageAnimation = null;
         public bool PageCanBack = false;
         public Stack<string> BackStack = new Stack<string>();
         protected string _initPage = string.Empty;
@@ -102,6 +104,8 @@ namespace StoryBookEditor
                     PageImage = Resources.Load<Sprite>("background");
                     if (PageImage == null)
                         Debug.LogWarning("Unable to load default background sprite");
+                    PageAnimation = null;
+
                     PageCanBack = false;
                     Branches.Clear();
                     _fileService.SaveBook(_storyBook, FileService.GetFileName());
@@ -177,21 +181,28 @@ namespace StoryBookEditor
         }
         public void DeletePage(string id)
         {
+            var loadPage = id;
+
             var page = _storyBook.Pages.Where(x => x.Id == id).FirstOrDefault();
             if(page != null)
             {
                 _storyBook.Branches.RemoveAll(x => page.Branches.Contains(x.Id));
                 _storyBook.Branches.RemoveAll(x => x.NextPageId == page.Id);
+
+                if(id == _currentId)
+                {
+                    if(!_storyBook.Pages.Any())
+                        _storyBook.Pages.Add(new StoryPageModel());
+                    loadPage = _storyBook.Pages.First().Id;
+                }
+
                 if (_storyBook.Pages.RemoveAll((b) => b.Id == id) > 0)
                 {
                     if (_fileService != null)
                         _fileService.SaveBook(_storyBook, FileService.GetFileName());
                 }
-                if (Branches.RemoveAll((b) => page.Branches.Contains(b.Id)) > 0 ||
-                    false)
-                {
-                    BookUpdated();
-                }
+
+                LoadPage(loadPage, null);
             }            
         }
         /// <summary>
@@ -228,12 +239,12 @@ namespace StoryBookEditor
             if (_fileService == null)
                 return;
             //change occured, I need to update the book with the current page, branches
-            if (!_storyBook.UpdatePage(_currentId, PageName, PageImage, BackgroundMusicClip, Branches.ToArray()))
+            if (!_storyBook.UpdatePage(_currentId, PageName, PageImage, PageAnimation, BackgroundMusicClip, Branches.ToArray()))
                 Debug.LogError("Book update failed");
             else
             {
                 _fileService.SaveBook(_storyBook, FileService.GetFileName());
-                _screenManager.UpdateDraw(PageImage, Branches);
+                _screenManager.UpdateDraw(PageImage, PageAnimation, Branches);
             }
         }
 
@@ -275,6 +286,10 @@ namespace StoryBookEditor
                 PageImage = Resources.Load<Sprite>(page.Background);
             else
                 PageImage = null;
+            if (!string.IsNullOrEmpty(page.Animation))
+                PageAnimation = Resources.Load<RuntimeAnimatorController>(page.Animation);
+            else
+                PageAnimation = null;
 
             #region Background Music
             if (!string.IsNullOrEmpty(page.BackgroundMusic))
@@ -287,7 +302,7 @@ namespace StoryBookEditor
             //determine if can back
             PageCanBack = _initPage != _currentId;
             //render ui
-            _screenManager.UpdateDraw(PageImage, Branches);
+            _screenManager.UpdateDraw(PageImage, PageAnimation, Branches);
 
             //Call event
             if (PageChanged != null)

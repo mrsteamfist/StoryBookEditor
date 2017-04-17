@@ -10,7 +10,6 @@ namespace StoryBookEditor
     public class TableOfContent : EditorWindow
     {
         protected static readonly int TAB_OFFSET = 8;
-        public static readonly GUILayoutOption LabelMaxWidth = GUILayout.MaxWidth(250);
 
         [MenuItem("Story Book Editor/Table of Content")]
         public static void ShowWindow()
@@ -36,7 +35,13 @@ namespace StoryBookEditor
                 {
                     if (i > 0)
                     {
+                        EditorGUILayout.BeginHorizontal();
                         GUILayout.Label(root.Name);
+                        if (GUILayout.Button("Delete", EditorStyles.miniButtonRight))
+                        {
+                            Startup.BookInstance.DeletePage(root.Id);
+                        }
+                        EditorGUILayout.EndHorizontal();
                     }
                     i++;
                 }
@@ -51,10 +56,10 @@ namespace StoryBookEditor
             foreach (var page in childPages)
             {
                 EditorGUILayout.BeginHorizontal();
-                GUILayout.Label(page.Name, style, LabelMaxWidth);
+                GUILayout.Label(page.Name, style);
                 if(GUILayout.Button("Delete", EditorStyles.miniButtonRight))
                 {
-
+                    Startup.BookInstance.DeletePage(page.Id);
                 }
                 EditorGUILayout.EndHorizontal();
                 if (!prevIds.Contains(page.Id))

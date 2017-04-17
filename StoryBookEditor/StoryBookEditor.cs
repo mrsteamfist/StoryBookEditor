@@ -21,6 +21,8 @@ namespace StoryBookEditor
         public static GUIContent SFXLabel = new GUIContent("Sound Effect");
         public static GUIContent SizeLabel = new GUIContent("Size");
         public static GUIContent SpriteLabel = new GUIContent("Image");
+        public static GUIContent AnimationModeLabel = new GUIContent("Animation Mode");
+        public static GUIContent AnimationLabel = new GUIContent("Animation");
         public static GUIContent NextPageLabel = new GUIContent("Next Page");
         public static GUIContent NewPageLabel = new GUIContent("New Page");
         public static GUIContent BranchesLabel = new GUIContent("Branches");
@@ -38,6 +40,7 @@ namespace StoryBookEditor
         #region Book Properties
         protected SerializedProperty PageName;
         protected SerializedProperty PagesBG;
+        protected SerializedProperty PagesAni;
         protected SerializedProperty PagesCanBack;
         protected SerializedProperty Branches;
         protected SerializedProperty BackgroundClip;
@@ -67,6 +70,7 @@ namespace StoryBookEditor
         void OnEnable()
         {
             PagesBG = serializedObject.FindProperty(StoryBook.PAGE_IMAGE_PROPERTY);
+            PagesAni = serializedObject.FindProperty(StoryBook.PAGE_ANIMATION_PROPERTY);
             PageName = serializedObject.FindProperty(StoryBook.PAGE_NAME_PROPERTY);
             Branches = serializedObject.FindProperty(StoryBook.BRANCHES_PROPERTY);
             PagesCanBack = serializedObject.FindProperty(StoryBook.PAGE_CAN_BACK_PROPERTY);
@@ -92,6 +96,7 @@ namespace StoryBookEditor
             #region Back Button
             EditorGUILayout.PropertyField(PageName);
             EditorGUILayout.PropertyField(PagesBG);
+            EditorGUILayout.PropertyField(PagesAni);
             EditorGUILayout.PropertyField(BackgroundClip);
             if (PagesCanBack.boolValue)
             {
@@ -118,6 +123,8 @@ namespace StoryBookEditor
                         EditorGUILayout.PropertyField(property.FindPropertyRelative("ItemLocation"), LocationLabel);
                         EditorGUILayout.PropertyField(property.FindPropertyRelative("ItemSize"), SizeLabel);
                         EditorGUILayout.PropertyField(property.FindPropertyRelative("ImageSprite"), SpriteLabel);
+                        property.FindPropertyRelative("AnimationType").intValue = (int)(BranchAnimation)EditorGUILayout.EnumPopup("Animation Mode", (TransitionTypes)property.FindPropertyRelative("AnimationType").intValue);
+                        EditorGUILayout.PropertyField(property.FindPropertyRelative("CurrentAnimation"), AnimationLabel);
                         EditorGUILayout.PropertyField(property.FindPropertyRelative("NextPageName"), NextPageLabel);
                         EditorGUILayout.PropertyField(property.FindPropertyRelative("SFXClip"), SFXLabel);
                         property.FindPropertyRelative("TransitionType").intValue = (int)(TransitionTypes)EditorGUILayout.EnumPopup("Transition Type", (TransitionTypes)property.FindPropertyRelative("TransitionType").intValue);
@@ -138,7 +145,7 @@ namespace StoryBookEditor
                             property.FindPropertyRelative("CurrentImageSprite").objectReferenceValue = null;
                             property.FindPropertyRelative("NextImageSprite").objectReferenceValue = null;
                         }
-
+                        #region Branch Variables
                         if(property.FindPropertyRelative("IsPreVariablesOpen").boolValue = EditorGUILayout.Foldout(property.FindPropertyRelative("IsPreVariablesOpen").boolValue, PreReqBranchLabel))
                         {
                             var preReqs = property.FindPropertyRelative("PreVariables");
@@ -223,7 +230,7 @@ namespace StoryBookEditor
                             }
                             EditorGUILayout.EndHorizontal();
                         }
-
+                        #endregion
                         EditorGUILayout.BeginHorizontal();
                         if (GUILayout.Button("Go To", EditorStyles.miniButtonLeft, ButtonWidth))
                         {

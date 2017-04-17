@@ -100,7 +100,7 @@ namespace StoryBookEditor
             return (Branches.GetHashCode() >> 10) + Pages.GetHashCode();
         }
 
-        public bool UpdatePage(string pageId, string pageName, Sprite pageImage, AudioClip bgm, params StoryBranchModel[] branches)
+        public bool UpdatePage(string pageId, string pageName, Sprite pageImage, RuntimeAnimatorController pageAnimation, AudioClip bgm, params StoryBranchModel[] branches)
         {
             var matchingPage = (from p in Pages
                                 where p.Id == pageId
@@ -120,6 +120,15 @@ namespace StoryBookEditor
             else if (pageImage != null && pageImage.name != matchingPage.Background)
             {
                 matchingPage.Background = pageImage.name;
+            }
+
+            if (pageAnimation == null && !string.IsNullOrEmpty(matchingPage.Animation))
+            {
+                matchingPage.Animation = string.Empty;
+            }
+            else if (pageAnimation != null && pageAnimation.name != matchingPage.Animation)
+            {
+                matchingPage.Animation = pageAnimation.name;
             }
 
             if ((string.IsNullOrEmpty(matchingPage.BackgroundMusic) && bgm != null) ||

@@ -19,6 +19,7 @@ namespace StoryBookEditor
         public List<string> Branches;
         public string Name;
         public string Background;
+        public string Animation;
         public string Id;
         public string BackgroundMusic;
 

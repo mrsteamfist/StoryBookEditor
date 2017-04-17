@@ -31,7 +31,9 @@ namespace StoryBookEditor
 
         public OnClickDelegate ItemClickDelegate { get; set; }
         protected SpriteRenderer SpriteRenderer { get; set; }
+        protected Animator Animator { get; set; }
         protected Sprite _pageBg;
+
         protected IEnumerable<StoryBranchModel> _branches;
         public StoryBookModel StoryBookInstance { get; set; }
         protected bool _isUIDirty;
@@ -57,10 +59,17 @@ namespace StoryBookEditor
         GameObject _nextPageImage;
         #endregion
 
+        /// <summary>
+        /// On Enable, make sure all of the components are loaded and load the fade to black image
+        /// On Enable should fire evertime we go from tombstoned or turn off to running
+        /// </summary>
         public void OnEnable()
         {
             if (SpriteRenderer == null && (SpriteRenderer = GetComponent<SpriteRenderer>()) == null)
                 SpriteRenderer = gameObject.AddComponent<SpriteRenderer>();
+            if (Animator == null && (Animator = GetComponent<Animator>()) == null)
+                Animator = gameObject.AddComponent<Animator>();
+
             _fadeImage = Resources.Load<Texture2D>("FadeImg");
         }
 
@@ -137,26 +146,26 @@ namespace StoryBookEditor
 
         protected void setupui()
         {
-            if(Camera.main == null && Camera.allCamerasCount > 0)
+            var camera = Camera.main;
+            if (camera == null && Camera.allCamerasCount > 0)
             {
                 Camera.allCameras[0].tag = "MainCamera";
+                camera = Camera.allCameras[0];
             }
 
-            Debug.Log(Camera.allCameras[0].tag);
-            if (Camera.main == null || Screen.height < 1 || Screen.width < 1)
+            if (camera == null || Screen.height < 1 || Screen.width < 1)
             {
-                Debug.LogError("Error draw scene UI");
                 return;
             }
 
-            if (!Camera.main.orthographic)
-                Camera.main.orthographic = true;
-            Camera.main.transform.position = new Vector3(0, 0, -10);
+            if (!camera.orthographic)
+                camera.orthographic = true;
+            camera.transform.position = new Vector3(0, 0, -10);
 
-            var worldScreenHeight = Camera.main.orthographicSize * 2.0;
+            var worldScreenHeight = camera.orthographicSize * 2.0;
 
             //resize accordingly
-            float scalex = (float)((worldScreenHeight / Camera.main.pixelHeight * Camera.main.pixelWidth) / SpriteRenderer.sprite.bounds.size.x);
+            float scalex = (float)((worldScreenHeight / camera.pixelHeight * camera.pixelWidth) / SpriteRenderer.sprite.bounds.size.x);
             float scaley = (float)(worldScreenHeight / SpriteRenderer.sprite.bounds.size.y);
             SpriteRenderer.transform.localScale = new Vector3((float)Math.Min(scalex, scaley), (float)Math.Min(scalex, scaley), 1);
 
@@ -188,6 +197,16 @@ namespace StoryBookEditor
                                     //set branch location
                                     branch.GameObj.transform.localPosition = new Vector3(((sectionX * branch.ItemLocation.x) - halfX) + ((sectionX * branch.ItemSize.x) / 2f), ((sectionY * branch.ItemLocation.y) - halfY) + ((sectionY * branch.ItemSize.y) / 2f), 0f);
                                 }
+
+                                if((branch.AnimationType == BranchAnimation.Once || branch.AnimationType == BranchAnimation.Loop) && branch.CurrentAnimation != null)
+                                {
+                                    var animator = branch.GameObj.AddComponent<Animator>();
+                                    animator.runtimeAnimatorController = branch.CurrentAnimation;
+                                    if(branch.AnimationType == BranchAnimation.Loop)
+                                    {
+                                        animator.StartPlayback();
+                                    }
+                                }
                             }
                         }
                     }
@@ -199,7 +218,7 @@ namespace StoryBookEditor
 
         public void OnGUI()
         {
-            if (_isUIDirty)
+            if (_isUIDirty && Camera.allCamerasCount > 0)
             {
                 setupui();
             }
@@ -317,21 +336,33 @@ namespace StoryBookEditor
                     var validBranches = viewableBranches.Where(x => !string.IsNullOrEmpty(x.Image) && !x.IsAnyClick() && x.DidClick((int)clickX, (int)clickY));
                     if (validBranches.Any())
                     {
-                        OnClickHandler(validBranches.First());
+                        var branch = validBranches.First();
+                        if(branch.AnimationType == BranchAnimation.Once)
+                        {
+                            var animator = branch.GameObj.GetComponent<Animator>();
+                            animator.StartPlayback();
+                        }
+                        OnClickHandler(branch);
                     }
                     else
                     {
                         validBranches = viewableBranches.Where(x => string.IsNullOrEmpty(x.Image) || x.IsAnyClick());
                         if (validBranches.Any())
                         {
-                            OnClickHandler(validBranches.First());
+                            var branch = validBranches.First();
+                            if (branch.AnimationType == BranchAnimation.Once)
+                            {
+                                var animator = branch.GameObj.GetComponent<Animator>();
+                                animator.StartPlayback();
+                            }
+                            OnClickHandler(branch);
                         }
                     }
                 }
             }
         }
 
-        public void UpdateDraw(Sprite pageBackground, IEnumerable<StoryBranchModel> branches)
+        public void UpdateDraw(Sprite pageBackground, RuntimeAnimatorController animation, IEnumerable<StoryBranchModel> branches)
         {
             if (SpriteRenderer == null)
             {
@@ -363,6 +394,14 @@ namespace StoryBookEditor
                 SpriteRenderer.sprite = _pageBg;
                 SpriteRenderer.sortingOrder = 0;
             }
+            
+            if (Animator.runtimeAnimatorController == null || (Animator.runtimeAnimatorController != animation))
+            {
+                Animator.runtimeAnimatorController = animation;
+                if (animation != null && animation.animationClips.Length > 0)
+                    Animator.StartPlayback();
+                    //Animator.Play(animation.animationClips[0].name);
+            }
 
             _branches = branches;
             
@@ -379,7 +418,8 @@ namespace StoryBookEditor
             }
             _isUIDirty = true;
 
-            setupui();
+            if(Camera.allCamerasCount > 0)
+                setupui();
         }
     }
 }
