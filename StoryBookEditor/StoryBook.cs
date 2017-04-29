@@ -34,7 +34,7 @@ namespace StoryBookEditor
         protected string _currentId = string.Empty;
         public string PageName = null;
         public Sprite PageImage = null;
-        public RuntimeAnimatorController PageAnimation = null;
+        public AnimationClip PageAnimation = null;
         public bool PageCanBack = false;
         public Stack<string> BackStack = new Stack<string>();
         protected string _initPage = string.Empty;
@@ -91,6 +91,12 @@ namespace StoryBookEditor
 
                 _screenManager.StoryBookInstance = _storyBook;
 
+                _screenManager.TransitionComplete += (o, a) =>
+                {
+                    _currentId = null;
+                    LoadPage(a.Item.NextPageId, a.Item);
+                };
+
                 #region Make new book if there isn't any
                 if (_storyBook.Pages == null || !_storyBook.Pages.Any())
                 {
@@ -135,28 +141,24 @@ namespace StoryBookEditor
                     _audioManager.PlaySFX(hitItem.SFXClip);
                 }
                 //Perform Fades
-                if(hitItem.TransitionType == TransitionTypes.Fade)
+                if (hitItem.TransitionType == TransitionTypes.Fade)
                 {
-                    _screenManager.TransitionComplete += (o, a) =>
-                    {
-                        LoadPage(hitItem.NextPageId, hitItem);
-                    };
                     _screenManager.BeginFade();
                 }
-                else if(hitItem.TransitionType == TransitionTypes.Slide)
+                else if (hitItem.TransitionType == TransitionTypes.Slide)
                 {
-                    _screenManager.TransitionComplete += (o, a) =>
-                    {
-                        LoadPage(hitItem.NextPageId, hitItem);
-                    };
                     _screenManager.BeginSlide(hitItem.CurrentImageSprite, hitItem.NextImageSprite);
                 }
                 else
+                {
+                    _currentId = null;
                     LoadPage(hitItem.NextPageId, hitItem);
+                }
                 
             }
             else
             {
+                _currentId = null;
                 LoadPage(_initPage, null);
             }
         }
@@ -212,10 +214,9 @@ namespace StoryBookEditor
         /// <param name="size">Size of the next item</param>
         /// <param name="sprite">Sprite to show the next item</param>
         /// <param name="nextPageName">Title of that page the branch will navigate to</param>
-        public void AddBranchToPage(Vector2 loc, Vector2 size, Sprite sprite, AudioClip sfx,
-            TransitionTypes transition, int transitionLength, Sprite currentImage, Sprite nextImage, string nextPageName)
+        public void AddBranchToPage(Vector2 loc, Vector2 size, Sprite sprite, AudioClip sfx, string nextPageName)
         {
-            var branch = _storyBook.AddBranchToPage(loc, size, sprite, sfx, transition, transitionLength, currentImage, nextImage, nextPageName, _currentId);
+            var branch = _storyBook.AddBranchToPage(loc, size, sprite, sfx, nextPageName, _currentId);
 
             if (branch != null)
             {
@@ -254,58 +255,60 @@ namespace StoryBookEditor
         /// <param name="id">The page ID to load</param>
         public void LoadPage(string id, StoryBranchModel from)
         {
-            if (id == _currentId)
-                return;
-
             var page = (from p in _storyBook.Pages
                         where p.Id == id
                         select p).FirstOrDefault();
-            if (page == null)
-            {
-                page = (from p in _storyBook.Pages
-                        select p).FirstOrDefault();
-                _currentId = page.Id;
-            }
-            else if (Branches.Where(b => b.NextPageId == id).Any())
-            {
-                BackStack.Push(_currentId);
-            }
 
-            _currentId = id;
+            if (id != _currentId)
+            {
+                if (page == null)
+                {
+                    page = (from p in _storyBook.Pages
+                            select p).FirstOrDefault();
+                    _currentId = page.Id;
+                }
+                else if (Branches.Where(b => b.NextPageId == id).Any())
+                {
+                    BackStack.Push(_currentId);
+                }
+                _currentId = id;
+
+                //load the branches
+                Branches = (from b in _storyBook.Branches
+                            where page.Branches.Contains(b.Id)
+                            select b).ToList();
+                Branches.ForEach(x => x.LoadResourcesFromStrings());
+
+                PageName = page.Name;
+                if (!string.IsNullOrEmpty(page.Background))
+                    PageImage = Resources.Load<Sprite>(page.Background);
+                else
+                    PageImage = null;
+                if (!string.IsNullOrEmpty(page.Animation))
+                    PageAnimation = Resources.Load<AnimationClip>(page.Animation);
+                else
+                    PageAnimation = null;
+
+                #region Background Music
+                if (!string.IsNullOrEmpty(page.BackgroundMusic))
+                    BackgroundMusicClip = Resources.Load<AudioClip>(page.BackgroundMusic);
+                else
+                    BackgroundMusicClip = null;
+                _audioManager.PlayBackgroundMusic(BackgroundMusicClip);
+                #endregion
+
+                //determine if can back
+                PageCanBack = _initPage != _currentId;
+            }
 
             if (string.IsNullOrEmpty(_initPage))
                 _initPage = _currentId;
-            //load the branches
-            Branches = (from b in _storyBook.Branches
-                        where page.Branches.Contains(b.Id)
-                        select b).ToList();
-            Branches.ForEach(x => x.LoadResourcesFromStrings());
-
-            PageName = page.Name;
-            if (!string.IsNullOrEmpty(page.Background))
-                PageImage = Resources.Load<Sprite>(page.Background);
-            else
-                PageImage = null;
-            if (!string.IsNullOrEmpty(page.Animation))
-                PageAnimation = Resources.Load<RuntimeAnimatorController>(page.Animation);
-            else
-                PageAnimation = null;
-
-            #region Background Music
-            if (!string.IsNullOrEmpty(page.BackgroundMusic))
-                BackgroundMusicClip = Resources.Load<AudioClip>(page.BackgroundMusic);
-            else
-                BackgroundMusicClip = null;
-            _audioManager.PlayBackgroundMusic(BackgroundMusicClip);
-            #endregion
-
-            //determine if can back
-            PageCanBack = _initPage != _currentId;
+            
             //render ui
             _screenManager.UpdateDraw(PageImage, PageAnimation, Branches);
 
             //Call event
-            if (PageChanged != null)
+            if (id != _currentId && PageChanged != null)
             {
                 PageChanged(page, new PageChangedEventArgs() { Branch = from });
             }

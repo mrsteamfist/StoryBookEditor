@@ -21,7 +21,6 @@ namespace StoryBookEditor
         public static GUIContent SFXLabel = new GUIContent("Sound Effect");
         public static GUIContent SizeLabel = new GUIContent("Size");
         public static GUIContent SpriteLabel = new GUIContent("Image");
-        public static GUIContent AnimationModeLabel = new GUIContent("Animation Mode");
         public static GUIContent AnimationLabel = new GUIContent("Animation");
         public static GUIContent NextPageLabel = new GUIContent("Next Page");
         public static GUIContent NewPageLabel = new GUIContent("New Page");
@@ -123,7 +122,6 @@ namespace StoryBookEditor
                         EditorGUILayout.PropertyField(property.FindPropertyRelative("ItemLocation"), LocationLabel);
                         EditorGUILayout.PropertyField(property.FindPropertyRelative("ItemSize"), SizeLabel);
                         EditorGUILayout.PropertyField(property.FindPropertyRelative("ImageSprite"), SpriteLabel);
-                        property.FindPropertyRelative("AnimationType").intValue = (int)(BranchAnimation)EditorGUILayout.EnumPopup("Animation Mode", (TransitionTypes)property.FindPropertyRelative("AnimationType").intValue);
                         EditorGUILayout.PropertyField(property.FindPropertyRelative("CurrentAnimation"), AnimationLabel);
                         EditorGUILayout.PropertyField(property.FindPropertyRelative("NextPageName"), NextPageLabel);
                         EditorGUILayout.PropertyField(property.FindPropertyRelative("SFXClip"), SFXLabel);
@@ -256,35 +254,22 @@ namespace StoryBookEditor
                 _size = EditorGUILayout.Vector2Field("Item Size", _size);
                 _nextSfx = EditorGUILayout.ObjectField(new GUIContent("SFX"), _nextSfx, typeof(AudioClip), true) as AudioClip;
                 _nextImg = EditorGUILayout.ObjectField(new GUIContent("Item Image"), _nextImg, typeof(Sprite), true) as Sprite;
-                _nextImg = EditorGUILayout.ObjectField(new GUIContent("Item Image"), _nextImg, typeof(Sprite), true) as Sprite;
-
-                _transType = (TransitionTypes)EditorGUILayout.EnumPopup(new GUIContent("Transition Type"), _transType);
-                _transLength = EditorGUILayout.IntField(new GUIContent("Transition Length"), _transLength);
-                if (_transType == TransitionTypes.Slide)
-                {
-                    _transCurrentImg = EditorGUILayout.ObjectField(new GUIContent("Slide Start Image"), _nextImg, typeof(Sprite), true) as Sprite;
-                    _transNextImg = EditorGUILayout.ObjectField(new GUIContent("Slide End Image"), _nextImg, typeof(Sprite), true) as Sprite;
-                }
 
                 if (GUILayout.Button("Create"))
                 {
-                    TargetBook.AddBranchToPage(_location, _size, _nextImg, _nextSfx, _transType, _transLength, _transCurrentImg, _transNextImg, _nextName);
+                    TargetBook.AddBranchToPage(_location, _size, _nextImg, _nextSfx, _nextName);
                     _location = Vector2.zero;
                     _size = new Vector2(1, 1);
                     _nextImg = null;
                     _nextSfx = null;
                     _nextName = string.Empty;
-                    _transType = TransitionTypes.None;
-                    _transLength = 1000;
-                    _transCurrentImg = null;
-                    _transNextImg = null;
                 }
             }
             EditorGUILayout.Separator();
             #endregion
-
-            if (serializedObject.ApplyModifiedProperties() ||
-                 (Event.current.type == EventType.ExecuteCommand &&
+            var applied = serializedObject.ApplyModifiedProperties();
+            if (applied ||
+                 (Event.current.type == EventType.ExecuteCommand ||
                  Event.current.commandName == "UndoRedoPerformed"))
             {
                 TargetBook.BookUpdated();

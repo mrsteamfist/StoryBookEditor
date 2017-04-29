@@ -44,9 +44,11 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AnimationCompleteScript.cs" />
     <Compile Include="AudioManager.cs" />
     <Compile Include="SpriteHolder.cs" />
     <Compile Include="TableOfContent.cs" />
+    <Compile Include="TEventArg.cs" />
     <Compile Include="Utility.cs" />
     <Compile Include="PageChangedEventArgs.cs" />
     <Compile Include="ScreenManager.cs" />

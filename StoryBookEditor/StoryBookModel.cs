@@ -100,7 +100,7 @@ namespace StoryBookEditor
             return (Branches.GetHashCode() >> 10) + Pages.GetHashCode();
         }
 
-        public bool UpdatePage(string pageId, string pageName, Sprite pageImage, RuntimeAnimatorController pageAnimation, AudioClip bgm, params StoryBranchModel[] branches)
+        public bool UpdatePage(string pageId, string pageName, Sprite pageImage, AnimationClip pageAnimation, AudioClip bgm, params StoryBranchModel[] branches)
         {
             var matchingPage = (from p in Pages
                                 where p.Id == pageId
@@ -128,6 +128,7 @@ namespace StoryBookEditor
             }
             else if (pageAnimation != null && pageAnimation.name != matchingPage.Animation)
             {
+                pageAnimation.legacy = true;
                 matchingPage.Animation = pageAnimation.name;
             }
 
@@ -161,8 +162,7 @@ namespace StoryBookEditor
             return true;
         }
  
-        public StoryBranchModel AddBranchToPage(Vector2 loc, Vector2 size, Sprite sprite, AudioClip sfx,
-            TransitionTypes transition, int transitionLength, Sprite currentImage, Sprite nextImage, string nextPageName, string currentId)
+        public StoryBranchModel AddBranchToPage(Vector2 loc, Vector2 size, Sprite sprite, AudioClip sfx, string nextPageName, string currentId)
         {
             StoryBranchModel reply = null;
             if (string.IsNullOrEmpty(nextPageName))
@@ -177,10 +177,9 @@ namespace StoryBookEditor
                 ItemSize = size,
                 SFXClip = sfx,
                 NextPageName = nextPageName,
-                TransitionType = transition,
-                TransitionLength = transitionLength,
-                CurrentImageSprite = currentImage,
-                NextImageSprite= nextImage,
+                TransitionType = TransitionTypes.None,
+                TransitionLength = 1000,
+                Animation = "",                
             };
             reply.CopyObjsIntoStrings();
 

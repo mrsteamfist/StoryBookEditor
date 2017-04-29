@@ -31,7 +31,7 @@ namespace StoryBookEditor
 
         public OnClickDelegate ItemClickDelegate { get; set; }
         protected SpriteRenderer SpriteRenderer { get; set; }
-        protected Animator Animator { get; set; }
+        protected Animation Animation { get; set; }
         protected float CurrentAnimationTime { get; set; }
         protected StoryBranchModel AnimatingBranch { get; set; }
         protected float LastTime { get; set; }
@@ -70,8 +70,8 @@ namespace StoryBookEditor
         {
             if (SpriteRenderer == null && (SpriteRenderer = GetComponent<SpriteRenderer>()) == null)
                 SpriteRenderer = gameObject.AddComponent<SpriteRenderer>();
-            if (Animator == null && (Animator = GetComponent<Animator>()) == null)
-                Animator = gameObject.AddComponent<Animator>();
+            if (Animation == null && (Animation = GetComponent<Animation>()) == null)
+                Animation = gameObject.AddComponent<Animation>();
 
             _fadeImage = Resources.Load<Texture2D>("FadeImg");
         }
@@ -90,7 +90,7 @@ namespace StoryBookEditor
 
         private double _timeoutBucket;
 
-        public event EventHandler TransitionComplete;
+        public event EventHandler<TEventArg<StoryBranchModel>> TransitionComplete;
 
         protected void OnClickHandler(StoryBranchModel id)
         {
@@ -201,13 +201,21 @@ namespace StoryBookEditor
                                     branch.GameObj.transform.localPosition = new Vector3(((sectionX * branch.ItemLocation.x) - halfX) + ((sectionX * branch.ItemSize.x) / 2f), ((sectionY * branch.ItemLocation.y) - halfY) + ((sectionY * branch.ItemSize.y) / 2f), 0f);
                                 }
 
-                                if((branch.AnimationType == BranchAnimation.Once || branch.AnimationType == BranchAnimation.Loop) && branch.CurrentAnimation != null)
+                                var animator = branch.GameObj.AddComponent<Animation>();
+
+                                if (animator.clip != null)
                                 {
-                                    var animator = branch.GameObj.AddComponent<Animator>();
-                                    animator.runtimeAnimatorController = branch.CurrentAnimation;
-                                    if(branch.AnimationType == BranchAnimation.Loop)
+                                    animator.RemoveClip(animator.clip);
+                                    animator.clip = null;
+                                }
+
+                                if (branch.CurrentAnimation != null)
+                                {
+                                    animator.AddClip(branch.CurrentAnimation, branch.Animation);
+                                    animator.clip = branch.CurrentAnimation;
+                                    if (branch.IsLooping)
                                     {
-                                        animator.StartPlayback();
+                                        animator.Play(PlayMode.StopAll);
                                     }
                                 }
                             }
@@ -248,14 +256,14 @@ namespace StoryBookEditor
                     fadeAlpha = -1;
                     SelectedTransitionType = TransitionTypes.None;
                     if (TransitionComplete != null)
-                        TransitionComplete(this, EventArgs.Empty);
+                        TransitionComplete(this, new TEventArg<StoryBranchModel>(AnimatingBranch));
                 }
             }
             else if(SelectedTransitionType == TransitionTypes.Fade)
             {
                 SelectedTransitionType = TransitionTypes.None;
                 if (TransitionComplete != null)
-                    TransitionComplete(this, EventArgs.Empty);
+                    TransitionComplete(this, new TEventArg<StoryBranchModel>(AnimatingBranch));
             }
             //Handle Slide Transition
             else if (SelectedTransitionType == TransitionTypes.Slide && _nextPageImage != null)
@@ -271,7 +279,7 @@ namespace StoryBookEditor
                         DestroyImmediate(_currentPageImage);
 
                     if (TransitionComplete != null)
-                        TransitionComplete(this, EventArgs.Empty);
+                        TransitionComplete(this, new TEventArg<StoryBranchModel>(AnimatingBranch));
                 }
                 else
                 {
@@ -308,7 +316,7 @@ namespace StoryBookEditor
                     DestroyImmediate(_currentPageImage);
 
                 if (TransitionComplete != null)
-                    TransitionComplete(this, EventArgs.Empty);
+                    TransitionComplete(this, new TEventArg<StoryBranchModel>(AnimatingBranch));
             }
 
             _timeoutBucket = 0;
@@ -321,14 +329,14 @@ namespace StoryBookEditor
         {
             if(CurrentAnimationTime > 0)
             {
-                CurrentAnimationTime -= (Time.time - LastTime);
-                if (CurrentAnimationTime < 0f)
+                var diff = Time.time - LastTime;
+                if (diff > CurrentAnimationTime)
                 {
                     OnClickHandler(AnimatingBranch);
                     CurrentAnimationTime = 0;
-                    AnimatingBranch = null;
                     LastTime = 0;
                 }
+
                 return;
             }
 
@@ -349,25 +357,31 @@ namespace StoryBookEditor
                 }
                 else
                 {
-                    var validBranches = viewableBranches.Where(x => !string.IsNullOrEmpty(x.Image) && !x.IsAnyClick() && x.DidClick((int)clickX, (int)clickY));
-                    if (!validBranches.Any())
+                    var validBranch = viewableBranches.Where(x => !string.IsNullOrEmpty(x.Image) && !x.IsAnyClick() && x.DidClick((int)clickX, (int)clickY)).FirstOrDefault();
+                    if (validBranch == null)
                     {
-                        validBranches = viewableBranches.Where(x => string.IsNullOrEmpty(x.Image) || x.IsAnyClick());
+                        validBranch = viewableBranches.Where(x => string.IsNullOrEmpty(x.Image) || x.IsAnyClick()).FirstOrDefault();
                     }
-                    var branch = validBranches.First();
-                    if (branch.AnimationType == BranchAnimation.Once)
+                    if (validBranch != null)
                     {
-                        AnimatingBranch = branch;
-                        var animator = branch.GameObj.GetComponent<Animator>();
-                        animator.StartPlayback();
-                        CurrentAnimationTime = animator.GetCurrentAnimatorClipInfo(0).First().clip.length;
-                        LastTime = Time.time;
+                        if (!validBranch.IsLooping && validBranch.CurrentAnimation != null)
+                        {
+                            var animator = validBranch.GameObj.GetComponent<Animation>();
+                            AnimatingBranch = validBranch;
+                            animator.Play();
+                            CurrentAnimationTime = validBranch.AnimationLength;
+                            LastTime = Time.time;
+                        }
+                        else
+                        {
+                            OnClickHandler(validBranch);
+                        }
                     }
                 }
             }
         }
 
-        public void UpdateDraw(Sprite pageBackground, RuntimeAnimatorController animation, IEnumerable<StoryBranchModel> branches)
+        public void UpdateDraw(Sprite pageBackground, AnimationClip clip, IEnumerable<StoryBranchModel> branches)
         {
             if (SpriteRenderer == null)
             {
@@ -399,13 +413,18 @@ namespace StoryBookEditor
                 SpriteRenderer.sprite = _pageBg;
                 SpriteRenderer.sortingOrder = 0;
             }
-            
-            if (Animator.runtimeAnimatorController == null || (Animator.runtimeAnimatorController != animation))
+
+            if (Animation.clip != null)
             {
-                Animator.runtimeAnimatorController = animation;
-                if (animation != null && animation.animationClips.Length > 0)
-                    Animator.StartPlayback();
-                    //Animator.Play(animation.animationClips[0].name);
+                Animation.RemoveClip(Animation.clip);
+                Animation.clip = null;
+            }
+
+            if (clip != null && Animation.GetClip(clip.name) == null)
+            {
+                Animation.AddClip(clip, clip.name);
+                Animation.clip = clip;
+                Animation.Play(PlayMode.StopAll);
             }
 
             _branches = branches;

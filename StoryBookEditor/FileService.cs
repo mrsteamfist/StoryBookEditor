@@ -16,11 +16,9 @@ namespace StoryBookEditor
     {
 #if TARGET_SCENE
         protected static string FILE_EXTENTION = "{0}.story";
-        protected static string PATH = System.IO.Path.Combine(Application.dataPath, @"Resources\");
-#else
-        protected static string PATH = System.IO.Path.Combine(Application.dataPath, @"Resources\game.story");
 #endif
-
+        protected static string DIRECTORY = System.IO.Path.Combine(Application.dataPath, @"Resources\");
+        protected readonly static string PATH = System.IO.Path.Combine(Application.dataPath, @"Resources\game.story");
 
         public static bool DoesFileExist()
         {
@@ -32,8 +30,7 @@ namespace StoryBookEditor
         {
 #if TARGET_SCENE
             string file = string.Format(FILE_EXTENTION, UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
-            //Debug.Log("File: " + file);
-            return Path.Combine(PATH, file);
+            return Path.Combine(DIRECTORY, file);
 #else
             return PATH;
 #endif
@@ -65,13 +62,23 @@ namespace StoryBookEditor
         {
             if (storyBook != null)
             {
+                StreamWriter writer;
                 var json = JsonUtility.ToJson(storyBook);
-                var writer = new StreamWriter(path);
+                if (!File.Exists(path))
+                {
+                    if (!Directory.Exists(DIRECTORY))
+                        Directory.CreateDirectory(DIRECTORY);
+
+                    writer = new StreamWriter(File.Create(path));
+                }
+                else
+                {
+                    writer = new StreamWriter(path);
+                }
                 writer.Write(json);
                 writer.Close();
                 return true;
             }
-
             return false;
         }
     }

@@ -10,13 +10,6 @@ using UnityEngine;
 
 namespace StoryBookEditor
 {
-    public enum BranchAnimation
-    {
-        None,
-        Loop,
-        Once,
-    }
-
     /// <summary>
     /// Story branch object
     /// </summary>
@@ -35,8 +28,7 @@ namespace StoryBookEditor
         public int TransitionLength = 1000;
         public string CurrentImage;
         public Sprite CurrentImageSprite;
-        public BranchAnimation AnimationType = BranchAnimation.None;
-        public RuntimeAnimatorController CurrentAnimation;
+        public AnimationClip CurrentAnimation;
         public string NextImage;
         public Sprite NextImageSprite;
         public List<string> PreVariables;
@@ -51,6 +43,8 @@ namespace StoryBookEditor
         public AudioClip SFXClip;
 
         public GameObject GameObj { get; set; }
+        public float AnimationLength;
+        public bool IsLooping;
         /// <summary>
         /// Ctor, inits ID
         /// </summary>
@@ -60,6 +54,7 @@ namespace StoryBookEditor
             PreVariables = new List<string>();
             PostVariables = new List<string>();
             ReverseVariables = new List<string>();
+            AnimationLength = 0;
         }
 
         public bool DidClick(int x, int y)
@@ -79,6 +74,7 @@ namespace StoryBookEditor
             NextImage = NextImageSprite == null ? null : NextImageSprite.name;
             SFX = SFXClip == null ? null : SFXClip.name;
             Image = ImageSprite == null ? null : ImageSprite.name;
+            Animation = CurrentAnimation == null ? null : CurrentAnimation.name;
         }
 
         public void LoadResourcesFromStrings()
@@ -87,6 +83,13 @@ namespace StoryBookEditor
             NextImageSprite = string.IsNullOrEmpty(NextImage) ? null : Resources.Load<Sprite>(NextImage);
             SFXClip = string.IsNullOrEmpty(SFX) ? null : Resources.Load<AudioClip>(SFX);
             ImageSprite = string.IsNullOrEmpty(Image) ? null : Resources.Load<Sprite>(Image);
+            CurrentAnimation = string.IsNullOrEmpty(Animation) ? null : Resources.Load<AnimationClip>(Animation);
+            if (CurrentAnimation != null)
+            {
+                AnimationLength = CurrentAnimation.length;
+                IsLooping = CurrentAnimation.isLooping;
+                CurrentAnimation.legacy = true;
+            }
         }
 
         public override int GetHashCode()
@@ -150,9 +153,16 @@ namespace StoryBookEditor
             IsPreVariablesOpen = other.IsPreVariablesOpen;
             IsPostVariablesOpen = other.IsPostVariablesOpen;
             IsReverseVariablesOpen = other.IsReverseVariablesOpen;
-            Animation = other.Animation;
             CurrentAnimation = other.CurrentAnimation;
-
+            if (CurrentAnimation != null)
+            {
+                Animation = other.CurrentAnimation.name;
+                IsLooping = CurrentAnimation.isLooping;
+                AnimationLength = CurrentAnimation.length;
+                CurrentAnimation.legacy = true;
+            }
+            else
+                Animation = null;
             return this;
     }
 
